@@ -109,7 +109,24 @@
                                             [{{ $area->areas_name ?? 'N/A' }}]</h3>
 
 
-                                        <div class="d-flex align-items-center" style="gap: 10px;">
+                                         <div class="d-flex align-items-center" style="gap: 10px;">
+                                            @if($myAreas->count() > 1)
+                                                <div class="input-group input-group-sm mr-2" style="width: auto; max-width: 250px;">
+                                                    <div class="input-group-prepend">
+                                                        <span class="input-group-text bg-primary text-white border-primary" style="background-color: #FF5F00 !important; border-color: #FF5F00 !important;">
+                                                            <i class="fas fa-map-marker-alt"></i>
+                                                        </span>
+                                                    </div>
+                                                    <select id="areaSelect" class="form-control form-control-sm border-primary" style="font-weight: 600; color: #333; border-color: #FF5F00 !important;">
+                                                        @foreach ($myAreas as $a)
+                                                            <option value="{{ $a->id }}" {{ $selectedAreaId == $a->id ? 'selected' : '' }}>
+                                                                {{ $a->location_name }} - [{{ $a->areas_name }}]
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                            @endif
+
                                             <span id="bulkTotalDisplay" class="badge badge-warning py-2 px-3"
                                                 style="font-size: 13px; font-weight: 600; background-color: #FF5F00; color: #fff; border-radius: 4px; display: none;">Total:
                                                 ₱0.00</span>
@@ -541,6 +558,14 @@
                     )) {
                     $('#bulkForm').submit();
                 }
+            });
+
+            // Redirect on area selection change
+            $('#areaSelect').on('change', function() {
+                var areaId = $(this).val();
+                var url = new URL(window.location.href);
+                url.searchParams.set('area_id', areaId);
+                window.location.href = url.toString();
             });
 
         });

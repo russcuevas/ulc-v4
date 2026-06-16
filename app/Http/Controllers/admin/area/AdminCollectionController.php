@@ -22,9 +22,15 @@ class AdminCollectionController extends Controller
             return redirect()->back()->with('error', 'Area not found.');
         }
 
+        $matchedAreaIds = DB::table('areas')
+            ->where('location_name', $area->location_name)
+            ->where('areas_name', $area->areas_name)
+            ->pluck('id')
+            ->toArray();
+
         $references = DB::table('clients_payments as cp')
             ->leftJoin('collectors as col', 'cp.collected_by', '=', 'col.id')
-            ->where('cp.client_area', $areaId)
+            ->whereIn('cp.client_area', $matchedAreaIds)
             ->select(
                 'cp.reference_number',
                 'cp.due_date',
@@ -35,16 +41,16 @@ class AdminCollectionController extends Controller
             ->orderBy('cp.due_date', 'desc')
             ->get();
 
-        $references = $references->map(function ($ref) use ($areaId) {
+        $references = $references->map(function ($ref) use ($matchedAreaIds) {
             $loans = DB::table('clients_loans as cl')
                 ->join('clients as c', 'cl.client_id', '=', 'c.id')
-                ->where('c.area_id', $areaId)
+                ->whereIn('c.area_id', $matchedAreaIds)
                 ->whereDate('cl.loan_from', '<=', $ref->due_date)
                 ->select('cl.*', 'c.id as client_id')
                 ->get();
 
             $payments = DB::table('clients_payments')
-                ->where('client_area', $areaId)
+                ->whereIn('client_area', $matchedAreaIds)
                 ->where('reference_number', $ref->reference_number)
                 ->get()
                 ->keyBy('client_loans_id');
@@ -98,9 +104,15 @@ class AdminCollectionController extends Controller
 
         $selectedDate = $reference->due_date;
 
+        $matchedAreaIds = DB::table('areas')
+            ->where('location_name', $area->location_name)
+            ->where('areas_name', $area->areas_name)
+            ->pluck('id')
+            ->toArray();
+
         $loans = DB::table('clients_loans as cl')
             ->join('clients as c', 'cl.client_id', '=', 'c.id')
-            ->where('c.area_id', $area->id)
+            ->whereIn('c.area_id', $matchedAreaIds)
             ->whereDate('cl.loan_from', '<=', $selectedDate)
             ->select(
                 'cl.*',
@@ -177,23 +189,28 @@ class AdminCollectionController extends Controller
             }
         }
 
-        $collector = DB::table('areas')
-            ->where('id', $areaId)
-            ->value('collector_id');
+        $area = DB::table('areas')->where('id', $areaId)->first();
+        $matchedAreaIds = DB::table('areas')
+            ->where('location_name', $area->location_name ?? '')
+            ->where('areas_name', $area->areas_name ?? '')
+            ->pluck('id')
+            ->toArray();
+
+        $collector = $area->collector_id ?? null;
 
         $collectorName = DB::table('collectors')->where('id', $collector)->value('fullname') ?? 'Collector';
 
         if ($action === 'no_payment') {
             $loans = DB::table('clients_loans as cl')
                 ->join('clients as c', 'cl.client_id', '=', 'c.id')
-                ->where('c.area_id', $areaId)
+                ->whereIn('c.area_id', $matchedAreaIds)
                 ->where('cl.balance', '>', 0)
                 ->select('cl.*', 'c.id as client_id')
                 ->get();
         } else {
             $loans = DB::table('clients_loans as cl')
                 ->join('clients as c', 'cl.client_id', '=', 'c.id')
-                ->where('c.area_id', $areaId)
+                ->whereIn('c.area_id', $matchedAreaIds)
                 ->where('cl.balance', '>', 0)
                 ->whereDate('cl.loan_from', '<=', $selectedDate)
                 ->select('cl.*', 'c.id as client_id')

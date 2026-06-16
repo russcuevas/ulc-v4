@@ -8,9 +8,9 @@
             </div>
             <div class="modal-body">
                 <ul>
-                    @foreach ($areas as $area)
-                        <li>{{ $area->areas_name }} -
-                            {{ $area->collector_name }}</li>
+                    @foreach ($areas->groupBy('areas_name') as $areaName => $assignedAreas)
+                        <li>{{ $areaName }} -
+                            {{ $assignedAreas->pluck('collector_name')->implode(', ') }}</li>
                     @endforeach
                 </ul>
             </div>

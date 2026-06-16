@@ -8,6 +8,7 @@
                 </div>
 
                 <div class="modal-body">
+                    <input type="hidden" name="area_id" value="{{ $selectedAreaId }}">
                     <label>Select Date</label>
                     <input type="date" name="date" class="form-control" value="{{ $selectedDate }}">
                 </div>

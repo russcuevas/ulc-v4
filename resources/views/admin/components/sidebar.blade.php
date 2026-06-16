@@ -21,7 +21,8 @@
 
             @php
                 $allAreas = \App\Models\Areas::query()
-                    ->select('id', 'location_name', 'areas_name')
+                    ->select('location_name', 'areas_name')
+                    ->groupBy('location_name', 'areas_name')
                     ->orderBy('location_name')
                     ->orderBy('areas_name')
                     ->get();

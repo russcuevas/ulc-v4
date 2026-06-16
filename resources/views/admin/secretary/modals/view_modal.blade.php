@@ -16,19 +16,20 @@
                 <div class="modal-body">
                     <ul>
 
-                        @foreach ($secretaryAreas as $area)
-                            @if ($area->secretary_id == $secretary->id)
-                                <li>
-                                    <strong>
+                        @php
+                            $myAreas = $secretaryAreas->where('secretary_id', $secretary->id)->groupBy('areas_name');
+                        @endphp
 
-                                        {{ $area->areas_name }}
-                                    </strong>
-                                    <br>
-                                    <small>
-                                        Collector: {{ $area->collector_name }}
-                                    </small>
-                                </li>
-                            @endif
+                        @foreach ($myAreas as $areaName => $rows)
+                            <li>
+                                <strong>
+                                    {{ $areaName }}
+                                </strong>
+                                <br>
+                                <small>
+                                    Collector: {{ $rows->pluck('collector_name')->implode(', ') }}
+                                </small>
+                            </li>
                         @endforeach
 
                     </ul>

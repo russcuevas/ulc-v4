@@ -21,13 +21,34 @@ class CollectorCollectionController extends Controller
         $selectedDate = $request->date ?? now()->format('Y-m-d');
         $today = \Carbon\Carbon::parse($selectedDate);
 
-        // Get areas
-        $areas = DB::table('areas')
+        // Get areas assigned to this collector
+        $myAreas = DB::table('areas')
             ->where('collector_id', $collectorId)
             ->get(['id', 'location_name', 'areas_name']);
 
-        $area = $areas->first();
-        $areaIds = $areas->pluck('id')->toArray();
+        // Determine selected area
+        $selectedAreaId = $request->area_id;
+        if (empty($selectedAreaId)) {
+            $selectedAreaId = $myAreas->first()?->id;
+        }
+
+        $area = $myAreas->firstWhere('id', $selectedAreaId);
+
+        // Get all area IDs matching this collector's selected location and area name
+        $allMatchedAreaIds = [];
+        if ($area) {
+            $allMatchedAreaIds = DB::table('areas')
+                ->where('location_name', $area->location_name)
+                ->where('areas_name', $area->areas_name)
+                ->pluck('id')
+                ->toArray();
+        }
+
+        // Get matched area records keyed by ID for display lookup
+        $matchedAreas = DB::table('areas')
+            ->whereIn('id', $allMatchedAreaIds)
+            ->get()
+            ->keyBy('id');
 
         // ✅ FIXED QUERY
         // Include:
@@ -36,7 +57,7 @@ class CollectorCollectionController extends Controller
         // - include overdue (removed loan_to filter)
         $loans = DB::table('clients_loans as cl')
             ->join('clients as c', 'cl.client_id', '=', 'c.id')
-            ->whereIn('c.area_id', $areaIds)
+            ->whereIn('c.area_id', $allMatchedAreaIds)
             ->whereDate('cl.loan_from', '<=', $selectedDate)
             ->select('cl.*', 'c.fullname', 'c.area_id')
             ->orderByDesc('cl.id')
@@ -50,8 +71,8 @@ class CollectorCollectionController extends Controller
                 return (int)$item->client_id;
             });
 
-        $clients = $loans->map(function ($loan) use ($payments, $selectedDate, $areas) {
-            $area = $areas->firstWhere('id', $loan->area_id);
+        $clients = $loans->map(function ($loan) use ($payments, $selectedDate, $matchedAreas) {
+            $areaRecord = $matchedAreas[$loan->area_id] ?? null;
             $payment = $payments[(int)$loan->client_id] ?? null;
 
             $isOverdue = Carbon::parse($selectedDate)->gt(Carbon::parse($loan->loan_to));
@@ -61,7 +82,7 @@ class CollectorCollectionController extends Controller
                 'id' => $loan->client_id,
                 'fullname' => $loan->fullname,
                 'area_id' => $loan->area_id,
-                'location_name' => $area->location_name ?? 'N/A',
+                'location_name' => $areaRecord->location_name ?? 'N/A',
                 'loan' => $loan,
                 'payment' => $payment,
                 'is_overdue' => $isOverdue,
@@ -94,7 +115,9 @@ class CollectorCollectionController extends Controller
             'selectedDate',
             'totalClients',
             'totalCollections',
-            'totalDailyCollectibles'
+            'totalDailyCollectibles',
+            'myAreas',
+            'selectedAreaId'
         ));
     }
 

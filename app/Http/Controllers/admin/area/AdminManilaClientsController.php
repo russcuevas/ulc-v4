@@ -14,8 +14,6 @@ class AdminManilaClientsController extends Controller
 {
     public function AdminManilaClientsPage($id)
     {
-        $clients = Clients::where('area_id', $id)->get();
-
         $area = DB::table('areas')
             ->where('id', $id)
             ->select('areas_name', 'location_name')
@@ -23,6 +21,14 @@ class AdminManilaClientsController extends Controller
 
         $areas_name = $area->areas_name ?? 'Unknown Area';
         $location_name = $area->location_name ?? 'Unknown Location';
+
+        $matchedAreaIds = DB::table('areas')
+            ->where('location_name', $location_name)
+            ->where('areas_name', $areas_name)
+            ->pluck('id')
+            ->toArray();
+
+        $clients = Clients::whereIn('area_id', $matchedAreaIds)->get();
 
         // Pass the current area ID to the view
         return view('admin.areas.manila.clients', compact('clients', 'areas_name', 'location_name', 'id'));

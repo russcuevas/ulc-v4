@@ -25,7 +25,8 @@ class AdminDashboardController extends Controller
         $toDateTime = $isFiltered ? Carbon::parse($to)->endOfDay() : null;
 
         $areas = DB::table('areas')
-            ->select('id', 'location_name', 'areas_name')
+            ->select('location_name', 'areas_name')
+            ->groupBy('location_name', 'areas_name')
             ->orderBy('location_name')
             ->orderBy('areas_name')
             ->get();
@@ -34,8 +35,9 @@ class AdminDashboardController extends Controller
 
         $loanByArea = DB::table('clients_loans as cl')
             ->join('clients as c', 'cl.client_id', '=', 'c.id')
+            ->join('areas as a', 'c.area_id', '=', 'a.id')
             ->when($isFiltered, fn($query) => $query->whereBetween('cl.loan_from', [$from, $to]))
-            ->selectRaw('c.area_id,
+            ->selectRaw('a.location_name, a.areas_name,
                 COUNT(*) as total_loans,
                 COUNT(DISTINCT cl.client_id) as unique_clients,
                 SUM(CASE WHEN cl.loan_status = "new" THEN 1 ELSE 0 END) as new_loan_count,
@@ -44,31 +46,39 @@ class AdminDashboardController extends Controller
                 SUM(cl.balance) as total_balance,
                 SUM(CASE WHEN cl.loan_to < ? AND cl.balance > 0 THEN cl.balance ELSE 0 END) as total_lapsed_balance,
                 SUM(CASE WHEN cl.loan_to >= ? AND cl.balance > 0 THEN cl.balance ELSE 0 END) as total_active_balance', [$today, $today])
-            ->groupBy('c.area_id')
+            ->groupBy('a.location_name', 'a.areas_name')
             ->get()
-            ->keyBy('area_id');
+            ->keyBy(fn($item) => $item->location_name . '|' . $item->areas_name);
 
         $paymentByArea = DB::table('clients_payments as cp')
+            ->join('areas as a', 'cp.client_area', '=', 'a.id')
             ->when($isFiltered, fn($query) => $query->whereBetween('cp.due_date', [$from, $to]))
-            ->selectRaw('cp.client_area as area_id, SUM(cp.daily) as total_collectibles, SUM(CASE WHEN cp.is_collected = 1 THEN cp.collection ELSE 0 END) as total_collected, COUNT(*) as payment_count')
-            ->groupBy('cp.client_area')
+            ->selectRaw('a.location_name, a.areas_name, SUM(cp.daily) as total_collectibles, SUM(CASE WHEN cp.is_collected = 1 THEN cp.collection ELSE 0 END) as total_collected, COUNT(*) as payment_count')
+            ->groupBy('a.location_name', 'a.areas_name')
             ->get()
-            ->keyBy('area_id');
+            ->keyBy(fn($item) => $item->location_name . '|' . $item->areas_name);
 
-        $newClientsByArea = DB::table('clients')
-            ->when($isFiltered, fn($query) => $query->whereBetween('created_at', [$fromDateTime, $toDateTime]))
-            ->selectRaw('area_id, COUNT(*) as new_clients')
-            ->groupBy('area_id')
+        $newClientsByArea = DB::table('clients as c')
+            ->join('areas as a', 'c.area_id', '=', 'a.id')
+            ->when($isFiltered, fn($query) => $query->whereBetween('c.created_at', [$fromDateTime, $toDateTime]))
+            ->selectRaw('a.location_name, a.areas_name, COUNT(*) as new_clients')
+            ->groupBy('a.location_name', 'a.areas_name')
             ->get()
-            ->keyBy('area_id');
+            ->keyBy(fn($item) => $item->location_name . '|' . $item->areas_name);
 
         $areaSummaries = $areas->map(function ($area) use ($loanByArea, $paymentByArea, $newClientsByArea) {
-            $loan = $loanByArea->get($area->id);
-            $payment = $paymentByArea->get($area->id);
-            $newClients = $newClientsByArea->get($area->id);
+            $key = $area->location_name . '|' . $area->areas_name;
+            $loan = $loanByArea->get($key);
+            $payment = $paymentByArea->get($key);
+            $newClients = $newClientsByArea->get($key);
+
+            $firstId = DB::table('areas')
+                ->where('location_name', $area->location_name)
+                ->where('areas_name', $area->areas_name)
+                ->value('id');
 
             return (object) [
-                'id' => $area->id,
+                'id' => $firstId,
                 'location_name' => $area->location_name,
                 'areas_name' => $area->areas_name,
                 'total_clients' => (int) ($loan->unique_clients ?? 0),

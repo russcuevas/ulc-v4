@@ -35,12 +35,22 @@ class SecretaryDashboardController extends Controller
 
         $areas = DB::table('areas')
             ->where('secretary_id', $secretaryId)
+            ->select('location_name', 'areas_name')
+            ->groupBy('location_name', 'areas_name')
             ->get();
 
         $areaSummaries = $areas->map(function ($area) use ($from, $to, $showAllTime) {
+            $matchedAreaIds = DB::table('areas')
+                ->where('location_name', $area->location_name)
+                ->where('areas_name', $area->areas_name)
+                ->pluck('id')
+                ->toArray();
+
+            $firstId = $matchedAreaIds[0] ?? null;
+
             $totalLoansQuery = DB::table('clients_loans as cl')
                 ->join('clients as c', 'cl.client_id', '=', 'c.id')
-                ->where('c.area_id', $area->id);
+                ->whereIn('c.area_id', $matchedAreaIds);
             if (!$showAllTime) {
                 $totalLoansQuery->whereBetween('cl.loan_from', [$from, $to]);
             }
@@ -48,17 +58,17 @@ class SecretaryDashboardController extends Controller
 
             $totalLoansAmountQuery = DB::table('clients_loans as cl')
                 ->join('clients as c', 'cl.client_id', '=', 'c.id')
-                ->where('c.area_id', $area->id);
+                ->whereIn('c.area_id', $matchedAreaIds);
             if (!$showAllTime) {
                 $totalLoansAmountQuery->whereBetween('cl.loan_from', [$from, $to]);
             }
             $totalLoansAmount = $totalLoansAmountQuery->sum('cl.loan_amount');
 
             $totalCollectedQuery = DB::table('clients_payments')
-                ->where('client_area', $area->id)
+                ->whereIn('client_area', $matchedAreaIds)
                 ->where('is_collected', 1);
             $totalCollectiblesQuery = DB::table('clients_payments')
-                ->where('client_area', $area->id);
+                ->whereIn('client_area', $matchedAreaIds);
 
             if (!$showAllTime) {
                 $totalCollectedQuery->whereBetween('due_date', [$from, $to]);
@@ -69,7 +79,7 @@ class SecretaryDashboardController extends Controller
             $totalCollectibles = $totalCollectiblesQuery->sum('daily');
 
             return (object)[
-                'id' => $area->id,
+                'id' => $firstId,
                 'areas_name' => $area->areas_name,
                 'location_name' => $area->location_name,
                 'total_loans' => $totalLoans,

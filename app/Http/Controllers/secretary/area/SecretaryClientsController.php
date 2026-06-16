@@ -14,11 +14,21 @@ class SecretaryClientsController extends Controller
 {
     public function SecretaryClientsPage($id)
     {
-        $clients = Clients::where('area_id', $id)->get();
-
-        $areas_name = DB::table('areas')
+        $area = DB::table('areas')
             ->where('id', $id)
-            ->value('areas_name') ?? 'Unknown Area';
+            ->select('areas_name', 'location_name')
+            ->first();
+
+        $areas_name = $area->areas_name ?? 'Unknown Area';
+        $location_name = $area->location_name ?? 'Unknown Location';
+
+        $matchedAreaIds = DB::table('areas')
+            ->where('location_name', $location_name)
+            ->where('areas_name', $areas_name)
+            ->pluck('id')
+            ->toArray();
+
+        $clients = Clients::whereIn('area_id', $matchedAreaIds)->get();
 
         return view('secretary.areas.clients', compact('clients', 'areas_name', 'id'));
     }

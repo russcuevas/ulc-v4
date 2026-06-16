@@ -58,12 +58,24 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
     Route::get('/secretary', [AdminSecretaryController::class, 'AdminSecretaryPage'])
         ->name('admin.secretary.page');
 
+    Route::post('/secretary/add', [AdminSecretaryController::class, 'AdminAddSecretary'])
+        ->name('admin.secretary.store');
+
+    Route::post('/secretary/assign-areas/{id}', [AdminSecretaryController::class, 'AdminAssignSecretaryAreas'])
+        ->name('admin.secretary.assign_areas');
+
     Route::put('/secretary/update/{id}', [AdminSecretaryController::class, 'AdminUpdateSecretary'])
         ->name('admin.secretary.update');
 
     // COLLECTOR
     Route::get('/collector', [AdminCollectorController::class, 'AdminCollectorPage'])
         ->name('admin.collector.page');
+
+    Route::post('/collector/add', [AdminCollectorController::class, 'AdminAddCollector'])
+        ->name('admin.collector.store');
+
+    Route::post('/collector/assign-areas/{id}', [AdminCollectorController::class, 'AdminAssignCollectorAreas'])
+        ->name('admin.collector.assign_areas');
 
     Route::put('/collector/update/{id}', [AdminCollectorController::class, 'AdminUpdateCollector'])
         ->name('admin.collector.update');

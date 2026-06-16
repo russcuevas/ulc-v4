@@ -82,8 +82,13 @@
                         <!-- Collector Table -->
                         <div class="col-md-6">
                             <div class="card card-primary card-outline">
-                                <div class="card-header">
+                                <div class="card-header d-flex justify-content-between align-items-center">
                                     <h3 class="card-title">List of Collector</h3>
+                                    <div class="card-tools ml-auto">
+                                        <button type="button" class="btn btn-sm btn-primary" style="background-color: #FF5F00; border-color: #FF5F00;" data-toggle="modal" data-target="#addCollectorModal">
+                                            <i class="fas fa-plus"></i> Add Collector
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="card-body">
                                     <table id="collectorTable" class="table table-bordered table-hover">
@@ -104,12 +109,18 @@
                                                             data-target="#editCollectorModal{{ $collector->id }}">
                                                             <i class="fas fa-edit"></i>
                                                         </button>
+                                                        <button class="btn btn-sm btn-success" data-toggle="modal"
+                                                            data-target="#assignAreasModal{{ $collector->id }}">
+                                                            <i class="fas fa-tasks"></i> Assign Areas
+                                                        </button>
                                                     </td>
                                                 </tr>
                                                 @include('admin.collector.modals.edit_modal')
                                             @endforeach
                                         </tbody>
                                     </table>
+                                    @include('admin.collector.modals.add_modal')
+                                    @include('admin.collector.modals.assign_modal')
                                 </div>
                             </div>
                         </div>
