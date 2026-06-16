@@ -1,0 +1,84 @@
+admins - done
+fullname        
+email            
+password            
+phone           
+gender            
+status          
+
+secretaries - done
+fullname
+phone_number
+gender
+email
+password
+gender
+status
+
+collectors - done
+fullname
+phone_number
+gender
+email
+password
+gender
+status
+
+areas - done
+secretary_id -> foreign -> secretaries table
+collector_id -> foreign -> collectors table
+location_name
+areas_name
+
+clients
+fullname
+phone
+address
+area_id -> foreign to areas table id
+gender
+created_at
+created_by
+updated_at
+
+clients_loans
+client_id -> foreign to clients table id
+pn_number -> AREA -> if AREA - 1 A12025-DATETODAY-client id it must A12025-12-03-01
+release_number 
+loan_from -> date
+loan_to -> date
+loan_amount
+balance -> inputted
+daily -> nullable
+principal -> kung magkano ang loan_amount
+loan_status -> 
+loan_terms ->
+status -> unpaid paid
+created_at
+created_by
+updated_at
+
+clients_payments
+reference_number -> format 2025-12-03-001 datetoday -- 001
+collected_by
+due_date -> datetoday
+client_id -> foreign to clients table id
+client_loans_id -> foreign to clients_loans table id
+client_area -> foreign to areas table id
+daily
+old_balance
+collection
+type
+is_lapsed
+is_collected
+created_at
+created_by
+updated_at
+
+
+
+
+TOM:
+display the clients based on todays date and reference number must auto generated
+tapos kapag sinave saka lang siya ma iinsert sa database clients_payments each clients
+reference_number must not unique
+can select past and future date showing all the data that is being collected

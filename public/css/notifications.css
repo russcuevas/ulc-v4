@@ -1,0 +1,100 @@
+/* Notifications design matching dashboard styles */
+:root{
+    --primary: #FF5F00;
+    --primary-dark: #e65500;
+    --success: #28a745;
+    --muted: #6c757d;
+    --card-bg: #ffffff;
+    --card-shadow: 0 8px 24px rgba(0,0,0,0.06);
+}
+
+/* Card wrapper similar to dashboard table-card */
+.table-card{
+    border-top: 4px solid var(--primary);
+    border-radius: 8px;
+    background: var(--card-bg);
+    box-shadow: var(--card-shadow);
+}
+
+/* List items */
+.list-group-item{
+    border: none;
+    border-bottom: 1px solid #eee;
+    padding: 16px;
+    display: flex;
+    align-items: flex-start;
+}
+
+.list-group-item .mr-3 i{
+    font-size: 20px;
+    width: 28px;
+    text-align: center;
+}
+
+/* Unread highlight — subtle warm background */
+.list-group-item.bg-light{
+    background: #fff8f2;
+}
+
+.font-weight-bold{
+    color: #343a40;
+    font-size: 1rem;
+}
+
+.small.text-muted{
+    color: var(--muted) !important;
+}
+
+/* Badges */
+.badge{
+    font-weight: 700;
+    padding: 0.35em 0.5em;
+    border-radius: 0.375rem;
+}
+
+.badge-success{
+    background: var(--success);
+    color: #fff;
+}
+
+.badge-warning{
+    background: #ffc107;
+    color: #212529;
+}
+
+/* Buttons */
+.mark-read-btn{
+    border: 1px solid #d6d6d6;
+    color: #333;
+    background: transparent;
+}
+
+#markAllBtn{
+    background-color: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+#markAllBtn:disabled,
+.mark-read-btn:disabled{
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+/* Responsive tweaks */
+@media (max-width: 576px){
+    .list-group-item{padding: 12px}
+    .font-weight-bold{font-size: .95rem}
+    .mr-3 i{font-size:18px}
+}
+
+/* Small helpers */
+.text-right{ text-align: right; }
+
+/* Make sure icons use dashboard color when primary */
+.text-primary{ color: var(--primary) !important; }
+.text-success{ color: var(--success) !important; }
+.text-warning{ color: #ffc107 !important; }
+
+/* Ensure card spacing inside container */
+.container.mt-4 .card{ margin-top: 0; }

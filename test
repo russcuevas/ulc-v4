@@ -1,0 +1,102 @@
+@php
+    use Illuminate\Support\Str;
+@endphp
+
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            {{-- Using your existing table-card class for consistent styling --}}
+            <div class="card table-card">
+                <div class="card-header d-flex justify-content-between align-items-center bg-white py-3">
+                    <h5 class="section-title mb-0">
+                        <i class="fas fa-bell mr-2" style="color: #FF5F00;"></i> Notifications
+                    </h5>
+                    @if(!$notifications->isEmpty())
+                        <button id="markAllBtn" class="btn btn-sm btn-primary">
+                            <i class="fas fa-check-double mr-1"></i> Mark All as Read
+                        </button>
+                    @endif
+                </div>
+                
+                <div class="card-body p-0">
+                    @if($notifications->isEmpty())
+                        <div class="text-center py-5">
+                            <i class="fas fa-inbox fa-3x mb-3 text-muted"></i>
+                            <p class="text-muted">No notifications found.</p>
+                        </div>
+                    @else
+                        <div class="list-group list-group-flush">
+                            @foreach($notifications as $note)
+                                @php
+                                    $data = json_decode($note->data, true) ?? [];
+                                    $message = $data['message'] ?? ($data['title'] ?? 'Notification');
+                                    $areaName = $note->area_name ?? ($note->area_id ?? 'N/A');
+                                    $isUnread = is_null($note->read_at);
+                                    
+                                    // Custom Icons & Colors based on dashboard palette
+                                    $icon = 'fas fa-info-circle';
+                                    $iconColor = '#007bff'; 
+                                    if (Str::contains($note->type, 'Lapsed')) {
+                                        $icon = 'fas fa-exclamation-triangle';
+                                        $iconColor = '#dc3545'; // Red for urgency
+                                    } elseif (Str::contains($note->type, 'NewClient')) {
+                                        $icon = 'fas fa-user-plus';
+                                        $iconColor = '#28a745'; // Green
+                                    } elseif (Str::contains($note->type, 'Payment')) {
+                                        $icon = 'fas fa-receipt';
+                                        $iconColor = '#FF5F00'; // Brand Orange
+                                    }
+                                @endphp
+
+                                <div class="list-group-item list-group-item-action border-0 p-3 notification-item {{ $isUnread ? 'unread' : '' }}" 
+                                     data-id="{{ $note->id }}" 
+                                     style="border-left: 4px solid {{ $isUnread ? '#FF5F00' : 'transparent' }} !important;">
+                                    
+                                    <div class="d-flex align-items-center">
+                                        <div class="icon-wrapper mr-3 d-flex align-items-center justify-content-center" 
+                                             style="width: 45px; height: 45px; background: #f8f9fa; border-radius: 50%;">
+                                            <i class="{{ $icon }}" style="color: {{ $iconColor }}; font-size: 1.2rem;"></i>
+                                        </div>
+
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <div>
+                                                    <div class="message-text {{ $isUnread ? 'font-weight-bold' : '' }}" style="font-size: 14px; color: #333;">
+                                                        {{ $message }}
+                                                    </div>
+                                                    <div class="small mt-1 text-muted">
+                                                        <span class="badge badge-light shadow-sm">Area: {{ $areaName }}</span>
+                                                        <span class="mx-1">•</span>
+                                                        <i class="far fa-clock mr-1"></i>{{ \Carbon\Carbon::parse($note->created_at)->diffForHumans() }}
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="action-area text-right ml-2">
+                                                    @if($isUnread)
+                                                        <button class="btn btn-xs btn-outline-primary mark-read-btn" style="font-size: 11px; border-radius: 20px;">
+                                                            Mark Read
+                                                        </button>
+                                                    @else
+                                                        <i class="fas fa-check-circle text-success" title="Read"></i>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+                
+                @if($notifications->hasPages())
+                    <div class="card-footer bg-white border-top-0">
+                        <div class="d-flex justify-content-center">
+                            {{ $notifications->links() }}
+                        </div>
+                    </div>
+                @endif
+            </div>
+        </div>
+    </div>
+</div>
