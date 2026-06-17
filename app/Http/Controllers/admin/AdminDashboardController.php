@@ -13,6 +13,7 @@ class AdminDashboardController extends Controller
     {
         $from = $request->query('from');
         $to = $request->query('to');
+        $selectedArea = $request->query('area');
 
         $isFiltered = $from
             && $to
@@ -24,12 +25,19 @@ class AdminDashboardController extends Controller
         $fromDateTime = $isFiltered ? Carbon::parse($from)->startOfDay() : null;
         $toDateTime = $isFiltered ? Carbon::parse($to)->endOfDay() : null;
 
+        $filteredLocation = null;
+        $filteredAreaName = null;
+        if ($selectedArea && str_contains($selectedArea, '|')) {
+            [$filteredLocation, $filteredAreaName] = explode('|', $selectedArea);
+        }
+
         $areas = DB::table('areas')
             ->select('location_name', 'areas_name')
             ->groupBy('location_name', 'areas_name')
             ->orderBy('location_name')
             ->orderBy('areas_name')
-            ->get();
+            ->get()
+            ->sortBy('areas_name', SORT_NATURAL);
 
         $today = Carbon::today()->toDateString();
 
@@ -116,39 +124,72 @@ class AdminDashboardController extends Controller
             })
             ->values();
 
+        // Create filtered sets for dashboard cards and charts
+        $dashboardAreaSummaries = $areaSummaries;
+        if ($filteredLocation && $filteredAreaName) {
+            $dashboardAreaSummaries = $areaSummaries->filter(function ($area) use ($filteredLocation, $filteredAreaName) {
+                return $area->location_name === $filteredLocation && $area->areas_name === $filteredAreaName;
+            });
+        }
+
+        $dashboardLocationSummaries = $dashboardAreaSummaries
+            ->groupBy('location_name')
+            ->map(function ($group, $location) {
+                return (object) [
+                    'location_name' => $location,
+                    'total_clients' => $group->sum('total_clients'),
+                    'new_clients' => $group->sum('new_clients'),
+                    'total_loans' => $group->sum('total_loans'),
+                    'new_loan_count' => $group->sum('new_loan_count'),
+                    'renewal_loan_count' => $group->sum('renewal_loan_count'),
+                    'total_loans_amount' => $group->sum('total_loans_amount'),
+                    'total_balance' => $group->sum('total_balance'),
+                    'total_lapsed_balance' => $group->sum('total_lapsed_balance'),
+                    'total_active_balance' => $group->sum('total_active_balance'),
+                    'total_collectibles' => $group->sum('total_collectibles'),
+                    'total_collected' => $group->sum('total_collected'),
+                ];
+            })
+            ->values();
+
         $overall = [
-            'locations' => $locationSummaries->count(),
-            'areas' => $areaSummaries->count(),
-            'total_clients' => (int) $areaSummaries->sum('total_clients'),
-            'new_clients' => (int) $areaSummaries->sum('new_clients'),
-            'total_loans' => (int) $areaSummaries->sum('total_loans'),
-            'total_loans_amount' => (float) $areaSummaries->sum('total_loans_amount'),
-            'total_balance' => (float) $areaSummaries->sum('total_balance'),
-            'total_lapsed_balance' => (float) $areaSummaries->sum('total_lapsed_balance'),
-            'total_active_balance' => (float) $areaSummaries->sum('total_active_balance'),
-            'total_collectibles' => (float) $areaSummaries->sum('total_collectibles'),
-            'total_collected' => (float) $areaSummaries->sum('total_collected'),
+            'locations' => $dashboardLocationSummaries->count(),
+            'areas' => $dashboardAreaSummaries->count(),
+            'total_clients' => (int) $dashboardAreaSummaries->sum('total_clients'),
+            'new_clients' => (int) $dashboardAreaSummaries->sum('new_clients'),
+            'total_loans' => (int) $dashboardAreaSummaries->sum('total_loans'),
+            'total_loans_amount' => (float) $dashboardAreaSummaries->sum('total_loans_amount'),
+            'total_balance' => (float) $dashboardAreaSummaries->sum('total_balance'),
+            'total_lapsed_balance' => (float) $dashboardAreaSummaries->sum('total_lapsed_balance'),
+            'total_active_balance' => (float) $dashboardAreaSummaries->sum('total_active_balance'),
+            'total_collectibles' => (float) $dashboardAreaSummaries->sum('total_collectibles'),
+            'total_collected' => (float) $dashboardAreaSummaries->sum('total_collected'),
         ];
 
-        $loanStatus = DB::table('clients_loans')
-            ->when($isFiltered, fn($query) => $query->whereBetween('loan_from', [$from, $to]))
-            ->selectRaw('COALESCE(loan_status, "unknown") as label, COUNT(*) as value')
-            ->groupBy('loan_status')
+        $loanStatus = DB::table('clients_loans as cl')
+            ->join('clients as c', 'cl.client_id', '=', 'c.id')
+            ->join('areas as a', 'c.area_id', '=', 'a.id')
+            ->when($isFiltered, fn($query) => $query->whereBetween('cl.loan_from', [$from, $to]))
+            ->when($filteredLocation && $filteredAreaName, fn($query) => $query->where('a.location_name', $filteredLocation)->where('a.areas_name', $filteredAreaName))
+            ->selectRaw('COALESCE(cl.loan_status, "unknown") as label, COUNT(*) as value')
+            ->groupBy('cl.loan_status')
             ->get();
 
-        $paymentType = DB::table('clients_payments')
-            ->when($isFiltered, fn($query) => $query->whereBetween('due_date', [$from, $to]))
-            ->selectRaw('COALESCE(type, "untyped") as label, COUNT(*) as value')
-            ->groupBy('type')
+        $paymentType = DB::table('clients_payments as cp')
+            ->join('areas as a', 'cp.client_area', '=', 'a.id')
+            ->when($isFiltered, fn($query) => $query->whereBetween('cp.due_date', [$from, $to]))
+            ->when($filteredLocation && $filteredAreaName, fn($query) => $query->where('a.location_name', $filteredLocation)->where('a.areas_name', $filteredAreaName))
+            ->selectRaw('COALESCE(cp.type, "untyped") as label, COUNT(*) as value')
+            ->groupBy('cp.type')
             ->get();
 
         $charts = [
-            'locationLabels' => $locationSummaries->pluck('location_name')->values(),
-            'locationLoans' => $locationSummaries->pluck('total_loans_amount')->map(fn($v) => (float) $v)->values(),
-            'locationCollected' => $locationSummaries->pluck('total_collected')->map(fn($v) => (float) $v)->values(),
-            'areaLabels' => $areaSummaries->pluck('areas_name')->values(),
-            'areaCollections' => $areaSummaries->pluck('total_collected')->map(fn($v) => (float) $v)->values(),
-            'areaLoans' => $areaSummaries->pluck('total_loans_amount')->map(fn($v) => (float) $v)->values(),
+            'locationLabels' => $dashboardLocationSummaries->pluck('location_name')->values(),
+            'locationLoans' => $dashboardLocationSummaries->pluck('total_loans_amount')->map(fn($v) => (float) $v)->values(),
+            'locationCollected' => $dashboardLocationSummaries->pluck('total_collected')->map(fn($v) => (float) $v)->values(),
+            'areaLabels' => $dashboardAreaSummaries->pluck('areas_name')->values(),
+            'areaCollections' => $dashboardAreaSummaries->pluck('total_collected')->map(fn($v) => (float) $v)->values(),
+            'areaLoans' => $dashboardAreaSummaries->pluck('total_loans_amount')->map(fn($v) => (float) $v)->values(),
             'loanStatusLabels' => $loanStatus->pluck('label')->values(),
             'loanStatusValues' => $loanStatus->pluck('value')->map(fn($v) => (int) $v)->values(),
             'paymentTypeLabels' => $paymentType->pluck('label')->values(),
@@ -164,7 +205,9 @@ class AdminDashboardController extends Controller
             'overall',
             'areaSummaries',
             'locationSummaries',
-            'charts'
+            'charts',
+            'areas',
+            'selectedArea'
         ));
     }
 }

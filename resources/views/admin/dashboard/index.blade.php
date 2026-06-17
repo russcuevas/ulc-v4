@@ -169,12 +169,22 @@
                 <div class="container-fluid">
                     <div class="row mb-2 align-items-center">
                         <div class="col-sm-6">
-                            <h1 class="m-0 section-title">Admin Analytics Dashboard</h1>
+                            <h1 class="m-0 section-title">
+                                Admin Analytics Dashboard
+                                @if($selectedArea && str_contains($selectedArea, '|'))
+                                    <span class="badge badge-warning" style="background-color: #FF5F00; color: white; font-size: 16px; font-weight: 600; vertical-align: middle;">
+                                        {{ explode('|', $selectedArea)[1] }}
+                                    </span>
+                                @endif
+                            </h1>
                             <p class="mb-0 range-text">
                                 @if ($isFiltered)
                                     From {{ $displayFrom }} to {{ $displayTo }}
                                 @else
                                     All Time Overview
+                                @endif
+                                @if($selectedArea && str_contains($selectedArea, '|'))
+                                    | Area: {{ str_replace('|', ' - ', $selectedArea) }}
                                 @endif
                             </p>
                         </div>
@@ -187,18 +197,30 @@
 
             <div class="content-header">
                 <div class="container-fluid">
-                    <form action="{{ route('admin.dashboard.page') }}" method="GET" class="row g-2">
-                        <div class="col-sm-4">
-                            <label>From</label>
+                    <form action="{{ route('admin.dashboard.page') }}" method="GET" class="row align-items-end">
+                        <div class="col-md-3 mb-2">
+                            <label><i class="fas fa-calendar-alt mr-1"></i> From</label>
                             <input type="date" name="from" class="form-control" value="{{ $displayFrom }}">
                         </div>
-                        <div class="col-sm-4">
-                            <label>To</label>
+                        <div class="col-md-3 mb-2">
+                            <label><i class="fas fa-calendar-alt mr-1"></i> To</label>
                             <input type="date" name="to" class="form-control" value="{{ $displayTo }}">
                         </div>
-                        <div class="col-sm-4 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary mr-2">Apply Filter</button>
-                            <a href="{{ route('admin.dashboard.page') }}" class="btn btn-outline-secondary">Reset</a>
+                        <div class="col-md-3 mb-2">
+                            <label><i class="fas fa-map-marker-alt mr-1"></i> Area</label>
+                            <select name="area" class="form-control">
+                                <option value="">-- All Areas --</option>
+                                @foreach ($areas as $a)
+                                    <option value="{{ $a->location_name }}|{{ $a->areas_name }}" 
+                                        {{ $selectedArea === ($a->location_name . '|' . $a->areas_name) ? 'selected' : '' }}>
+                                        {{ $a->location_name }} - [{{ $a->areas_name }}]
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-3 mb-2 d-flex">
+                            <button type="submit" class="btn btn-primary btn-block mr-2"><i class="fas fa-filter mr-1"></i> Apply Filter</button>
+                            <a href="{{ route('admin.dashboard.page') }}" class="btn btn-outline-secondary btn-block mt-0"><i class="fas fa-undo mr-1"></i> Reset</a>
                         </div>
                     </form>
                 </div>
@@ -299,7 +321,7 @@
 
     <div class="modal fade" id="breakdownDetailsModal" tabindex="-1" role="dialog"
         aria-labelledby="breakdownDetailsModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable" style="max-width: 95%;" role="document">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="breakdownDetailsModalLabel">
