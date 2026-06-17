@@ -116,7 +116,7 @@
                                                     $areaId = $collectors->first()->id;
                                                 @endphp
                                                 <tr>
-                                                    <td>{{ $areaName }}</td>
+                                                    <td data-order="{{ preg_replace_callback('/\d+/', fn($m) => sprintf('%04d', $m[0]), $areaName) }}">{{ $areaName }}</td>
                                                     <td>
                                                         <a href="{{ route('admin.areas.clients.page', $areaId) }}"
                                                             class="btn btn-sm btn-info">

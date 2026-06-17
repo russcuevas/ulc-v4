@@ -24,7 +24,8 @@ class CollectorCollectionController extends Controller
         // Get areas assigned to this collector
         $myAreas = DB::table('areas')
             ->where('collector_id', $collectorId)
-            ->get(['id', 'location_name', 'areas_name']);
+            ->get(['id', 'location_name', 'areas_name'])
+            ->sortBy('areas_name', SORT_NATURAL);
 
         // Determine selected area
         $selectedAreaId = $request->area_id;

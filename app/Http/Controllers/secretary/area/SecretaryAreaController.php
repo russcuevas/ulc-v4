@@ -16,7 +16,7 @@ class SecretaryAreaController extends Controller
         $secretary = Session::get('user');
         $secretaryId = $secretary->id;
 
-        $areas = Areas::where('secretary_id', $secretaryId)->get();
+        $areas = Areas::where('secretary_id', $secretaryId)->get()->sortBy('areas_name', SORT_NATURAL);
 
         $location_name = $areas->first()->location_name ?? 'No Location';
 

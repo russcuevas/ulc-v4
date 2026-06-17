@@ -29,7 +29,8 @@ class AdminSecretaryController extends Controller
             ->groupBy('areas.location_name', 'areas.areas_name')
             ->orderBy('location_name')
             ->orderBy('areas_name')
-            ->get();
+            ->get()
+            ->sortBy('areas_name', SORT_NATURAL);
 
         foreach ($allAreas as $area) {
             $area->secretary_name = DB::table('secretaries')

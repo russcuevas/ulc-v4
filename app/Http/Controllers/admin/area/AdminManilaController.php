@@ -27,7 +27,8 @@ class AdminManilaController extends Controller
             ->join('collectors', 'collectors.id', '=', 'areas.collector_id')
             ->where('areas.location_name', $location)
             ->select('areas.id', 'areas.areas_name', 'collectors.fullname as collector_name')
-            ->get();
+            ->get()
+            ->sortBy('areas_name', SORT_NATURAL);
 
         return view('admin.areas.manila.index', [
             'locationAreas' => $locationAreas,

@@ -23,13 +23,13 @@ class AdminCollectorController extends Controller
             )
             ->get();
 
-        // Get unique areas grouped by location and name
         $uniqueAreas = DB::table('areas')
             ->select('location_name', 'areas_name')
             ->groupBy('location_name', 'areas_name')
             ->orderBy('location_name')
             ->orderBy('areas_name')
-            ->get();
+            ->get()
+            ->sortBy('areas_name', SORT_NATURAL);
 
         // For each unique area, get the names of currently assigned collectors
         foreach ($uniqueAreas as $area) {

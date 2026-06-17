@@ -114,7 +114,7 @@
                                         <tbody>
                                             @foreach ($areas as $area)
                                                 <tr>
-                                                    <td>{{ $area->areas_name }}</td>
+                                                    <td data-order="{{ preg_replace_callback('/\d+/', fn($m) => sprintf('%04d', $m[0]), $area->areas_name) }}">{{ $area->areas_name }}</td>
                                                     <td>
                                                         <a href="{{ route('secretary.areas.clients.page', $area->id) }}"
                                                             class="btn btn-sm btn-info">
