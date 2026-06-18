@@ -22,10 +22,21 @@ class SecretaryCollectionController extends Controller
         // Get area
         $area = DB::table('areas')
             ->where('id', $areaId)
-            ->where('secretary_id', $secretary_id)
             ->first();
 
         if (!$area) {
+            return redirect()->route('secretary.areas.page')
+                ->with('error', 'Area not found.');
+        }
+
+        // Check if assigned to this secretary by location/name
+        $isAssigned = DB::table('areas')
+            ->where('location_name', $area->location_name)
+            ->where('areas_name', $area->areas_name)
+            ->where('secretary_id', $secretary_id)
+            ->exists();
+
+        if (!$isAssigned) {
             return redirect()->route('secretary.areas.page')
                 ->with('error', 'You are not authorized to access this area.');
         }
@@ -120,10 +131,20 @@ class SecretaryCollectionController extends Controller
 
         $area = DB::table('areas')
             ->where('id', $reference->client_area)
-            ->where('secretary_id', $secretary_id)
             ->first();
 
         if (!$area) {
+            return redirect()->route('secretary.areas.page')
+                ->with('error', 'Area not found.');
+        }
+
+        $isAssigned = DB::table('areas')
+            ->where('location_name', $area->location_name)
+            ->where('areas_name', $area->areas_name)
+            ->where('secretary_id', $secretary_id)
+            ->exists();
+
+        if (!$isAssigned) {
             return redirect()->route('secretary.areas.page')
                 ->with('error', 'Unauthorized.');
         }
@@ -524,10 +545,19 @@ class SecretaryCollectionController extends Controller
         // Validate area ownership
         $area = DB::table('areas')
             ->where('id', $reference->client_area)
-            ->where('secretary_id', $secretary->id)
             ->first();
 
         if (!$area) {
+            abort(404, 'Area not found.');
+        }
+
+        $isAssigned = DB::table('areas')
+            ->where('location_name', $area->location_name)
+            ->where('areas_name', $area->areas_name)
+            ->where('secretary_id', $secretary->id)
+            ->exists();
+
+        if (!$isAssigned) {
             abort(403, 'Unauthorized.');
         }
 
@@ -571,11 +601,20 @@ class SecretaryCollectionController extends Controller
         // Get area
         $area = DB::table('areas')
             ->where('id', $areaId)
-            ->where('secretary_id', $secretary_id)
             ->first();
 
         if (!$area) {
-            abort(403, 'Unauthorized or area not found.');
+            abort(404, 'Area not found.');
+        }
+
+        $isAssigned = DB::table('areas')
+            ->where('location_name', $area->location_name)
+            ->where('areas_name', $area->areas_name)
+            ->where('secretary_id', $secretary_id)
+            ->exists();
+
+        if (!$isAssigned) {
+            abort(403, 'Unauthorized.');
         }
 
         $allAreas = $request->query('all_areas') == 1;
@@ -584,8 +623,21 @@ class SecretaryCollectionController extends Controller
         $filterAreaId = $request->query('filter_area_id', $areaId);
 
         if ($allAreas) {
-            $areaIds = DB::table('areas')
+            $myUniqueAreas = DB::table('areas')
                 ->where('secretary_id', $secretary_id)
+                ->select('location_name', 'areas_name')
+                ->distinct()
+                ->get();
+
+            $areaIds = DB::table('areas')
+                ->where(function($query) use ($myUniqueAreas) {
+                    foreach ($myUniqueAreas as $ua) {
+                        $query->orWhere(function($q) use ($ua) {
+                            $q->where('location_name', $ua->location_name)
+                              ->where('areas_name', $ua->areas_name);
+                        });
+                    }
+                })
                 ->pluck('id')
                 ->toArray();
 
@@ -597,11 +649,20 @@ class SecretaryCollectionController extends Controller
         } else {
             $selectedArea = DB::table('areas')
                 ->where('id', $filterAreaId)
-                ->where('secretary_id', $secretary_id)
                 ->first();
 
             if (!$selectedArea) {
-                abort(403, 'Selected area unauthorized or not found.');
+                abort(404, 'Selected area not found.');
+            }
+
+            $isSelectedAreaAssigned = DB::table('areas')
+                ->where('location_name', $selectedArea->location_name)
+                ->where('areas_name', $selectedArea->areas_name)
+                ->where('secretary_id', $secretary_id)
+                ->exists();
+
+            if (!$isSelectedAreaAssigned) {
+                abort(403, 'Selected area unauthorized.');
             }
 
             $areaIds = DB::table('areas')

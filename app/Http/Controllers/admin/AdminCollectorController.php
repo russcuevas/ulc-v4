@@ -125,22 +125,28 @@ class AdminCollectorController extends Controller
             });
 
             if (!$alreadyAssigned) {
-                // Get secretary_id of the existing area to copy it
-                $existingArea = DB::table('areas')
+                // Get all unique secretary_ids of the existing area to copy it
+                $secretaryIds = DB::table('areas')
                     ->where('location_name', $sub['location_name'])
                     ->where('areas_name', $sub['areas_name'])
-                    ->first();
+                    ->pluck('secretary_id')
+                    ->unique()
+                    ->toArray();
 
-                $secretaryId = $existingArea ? $existingArea->secretary_id : 1; // fallback to 1
+                if (empty($secretaryIds)) {
+                    $secretaryIds = [1]; // fallback to 1
+                }
 
-                DB::table('areas')->insert([
-                    'secretary_id' => $secretaryId,
-                    'collector_id' => $id,
-                    'location_name' => $sub['location_name'],
-                    'areas_name' => $sub['areas_name'],
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                foreach ($secretaryIds as $secId) {
+                    DB::table('areas')->insert([
+                        'secretary_id' => $secId,
+                        'collector_id' => $id,
+                        'location_name' => $sub['location_name'],
+                        'areas_name' => $sub['areas_name'],
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
             }
         }
 

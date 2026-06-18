@@ -81,7 +81,7 @@
                 <div class="container-fluid">
                     <div class="row mb-2 align-items-center">
                         <div class="col-sm-6">
-                            <h1 class="m-0">{{ $location_name }}</h1>
+                            <h1 class="m-0" id="pageHeader">Assigned Areas</h1>
                         </div>
                     </div>
                 </div>
@@ -95,7 +95,7 @@
                         <div class="col-md-12">
                             <div class="card card-primary card-outline">
                                 <div class="card-header">
-                                    <h3 class="card-title">{{ $location_name }}</h3>
+                                    <h3 class="card-title" id="cardHeader">All Assigned Areas</h3>
                                     <div class="card-tools">
                                         <button type="button" class="btn btn-sm btn-info" data-toggle="modal"
                                             data-target="#printSalesModal">
@@ -104,16 +104,34 @@
                                     </div>
                                 </div>
                                 <div class="card-body">
+                                    <div class="row mb-3">
+                                        <div class="col-md-4">
+                                            <div class="form-group mb-0">
+                                                <label for="locationFilter" class="font-weight-bold"><i class="fas fa-filter"></i> Filter by Location</label>
+                                                <select id="locationFilter" class="form-control">
+                                                    <option value="all">-- All Locations --</option>
+                                                    @foreach ($areas->pluck('location_name')->unique() as $location)
+                                                        <option value="{{ $location }}">{{ $location }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
                                     <table id="manilaTable" class="table table-bordered table-hover">
                                         <thead>
                                             <tr>
+                                                <th>Location</th>
                                                 <th>Area Code</th>
                                                 <th>Action</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            @foreach ($areas as $area)
+                                            @foreach ($areas->groupBy(fn($a) => $a->location_name . '|' . $a->areas_name) as $key => $rows)
+                                                @php
+                                                    $area = $rows->first();
+                                                @endphp
                                                 <tr>
+                                                    <td>{{ $area->location_name }}</td>
                                                     <td data-order="{{ preg_replace_callback('/\d+/', fn($m) => sprintf('%04d', $m[0]), $area->areas_name) }}">{{ $area->areas_name }}</td>
                                                     <td>
                                                         <a href="{{ route('secretary.areas.clients.page', $area->id) }}"
@@ -167,8 +185,11 @@
                             <label><i class="fas fa-map-marker-alt"></i> AREA</label>
                             <select name="area_id" class="form-control" id="areaSelect" required>
                                 <option value="">-- Select Area --</option>
-                                @foreach ($areas as $area)
-                                    <option value="{{ $area->id }}">{{ $area->areas_name }}</option>
+                                @foreach ($areas->groupBy(fn($a) => $a->location_name . '|' . $a->areas_name) as $key => $rows)
+                                    @php
+                                        $area = $rows->first();
+                                    @endphp
+                                    <option value="{{ $area->id }}">{{ $area->location_name }} - {{ $area->areas_name }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -237,11 +258,30 @@
     <script>
         $(function() {
 
-            $('#manilaTable').DataTable({
+            var table = $('#manilaTable').DataTable({
                 "paging": true,
                 "searching": true,
                 "ordering": true,
                 "responsive": true
+            });
+
+            // Custom search filter for exact match on location column (index 0)
+            $('#locationFilter').on('change', function() {
+                var val = $(this).val();
+                
+                // Update page title and card title
+                var displayTitle = (val === 'all') ? 'Assigned Areas' : val;
+                var displayCard = (val === 'all') ? 'All Assigned Areas' : val;
+                $('#pageHeader').text(displayTitle);
+                $('#cardHeader').text(displayCard);
+
+                if (val === 'all') {
+                    table.column(0).search('').draw();
+                } else {
+                    // Exact regex match
+                    var escapedVal = $.fn.dataTable.util.escapeRegex(val);
+                    table.column(0).search('^' + escapedVal + '$', true, false).draw();
+                }
             });
 
             $('#allAreasCheck').on('change', function() {

@@ -18,9 +18,7 @@ class SecretaryAreaController extends Controller
 
         $areas = Areas::where('secretary_id', $secretaryId)->get()->sortBy('areas_name', SORT_NATURAL);
 
-        $location_name = $areas->first()->location_name ?? 'No Location';
-
-        return view('secretary.areas.index', compact('areas', 'location_name'));
+        return view('secretary.areas.index', compact('areas'));
     }
 
     public function SecretarySalesReportPrint(Request $request)
@@ -40,13 +38,40 @@ class SecretaryAreaController extends Controller
         $allAreas = $request->boolean('all_areas');
         $areaId = $request->input('area_id');
 
-        $secretaryAreaIds = Areas::where('secretary_id', $secretaryId)->pluck('id')->toArray();
+        if ($allAreas) {
+            $myUniqueAreas = DB::table('areas')
+                ->where('secretary_id', $secretaryId)
+                ->select('location_name', 'areas_name')
+                ->distinct()
+                ->get();
+
+            $matchedAreaIds = DB::table('areas')
+                ->where(function($query) use ($myUniqueAreas) {
+                    foreach ($myUniqueAreas as $ua) {
+                        $query->orWhere(function($q) use ($ua) {
+                            $q->where('location_name', $ua->location_name)
+                              ->where('areas_name', $ua->areas_name);
+                        });
+                    }
+                })
+                ->pluck('id')
+                ->toArray();
+        } else {
+            $selectedArea = DB::table('areas')
+                ->where('id', $areaId)
+                ->first();
+
+            $matchedAreaIds = $selectedArea ? DB::table('areas')
+                ->where('location_name', $selectedArea->location_name)
+                ->where('areas_name', $selectedArea->areas_name)
+                ->pluck('id')
+                ->toArray() : [];
+        }
 
         $loans = DB::table('clients_loans as cl')
             ->join('clients as c', 'cl.client_id', '=', 'c.id')
             ->join('areas as a', 'c.area_id', '=', 'a.id')
-            ->when($allAreas, fn($q) => $q->whereIn('a.id', $secretaryAreaIds))
-            ->when(!$allAreas && $areaId, fn($q) => $q->where('a.id', $areaId))
+            ->whereIn('a.id', $matchedAreaIds)
             ->whereBetween('cl.loan_from', [$from, $to])
             ->select(
                 'cl.*',

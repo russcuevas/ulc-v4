@@ -21,10 +21,12 @@ class CollectorCollectionController extends Controller
         $selectedDate = $request->date ?? now()->format('Y-m-d');
         $today = \Carbon\Carbon::parse($selectedDate);
 
-        // Get areas assigned to this collector
+        // Get areas assigned to this collector (grouped uniquely by location and area name)
         $myAreas = DB::table('areas')
             ->where('collector_id', $collectorId)
-            ->get(['id', 'location_name', 'areas_name'])
+            ->select('location_name', 'areas_name', DB::raw('MIN(id) as id'))
+            ->groupBy('location_name', 'areas_name')
+            ->get()
             ->sortBy('areas_name', SORT_NATURAL);
 
         // Determine selected area

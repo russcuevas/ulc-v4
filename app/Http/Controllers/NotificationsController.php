@@ -23,7 +23,23 @@ class NotificationsController extends Controller
         if ($role === 'collector') {
             $areaIds = DB::table('areas')->where('collector_id', $sessionUser->id)->pluck('id')->toArray();
         } elseif ($role === 'secretary') {
-            $areaIds = DB::table('areas')->where('secretary_id', $sessionUser->id)->pluck('id')->toArray();
+            $myUniqueAreas = DB::table('areas')
+                ->where('secretary_id', $sessionUser->id)
+                ->select('location_name', 'areas_name')
+                ->distinct()
+                ->get();
+
+            $areaIds = DB::table('areas')
+                ->where(function($query) use ($myUniqueAreas) {
+                    foreach ($myUniqueAreas as $ua) {
+                        $query->orWhere(function($q) use ($ua) {
+                            $q->where('location_name', $ua->location_name)
+                              ->where('areas_name', $ua->areas_name);
+                        });
+                    }
+                })
+                ->pluck('id')
+                ->toArray();
         } else {
             // Admin or other roles see all areas
             $areaIds = DB::table('areas')->pluck('id')->toArray();
@@ -93,7 +109,23 @@ class NotificationsController extends Controller
         if ($role === 'collector') {
             $areaIds = DB::table('areas')->where('collector_id', $sessionUser->id)->pluck('id')->toArray();
         } elseif ($role === 'secretary') {
-            $areaIds = DB::table('areas')->where('secretary_id', $sessionUser->id)->pluck('id')->toArray();
+            $myUniqueAreas = DB::table('areas')
+                ->where('secretary_id', $sessionUser->id)
+                ->select('location_name', 'areas_name')
+                ->distinct()
+                ->get();
+
+            $areaIds = DB::table('areas')
+                ->where(function($query) use ($myUniqueAreas) {
+                    foreach ($myUniqueAreas as $ua) {
+                        $query->orWhere(function($q) use ($ua) {
+                            $q->where('location_name', $ua->location_name)
+                              ->where('areas_name', $ua->areas_name);
+                        });
+                    }
+                })
+                ->pluck('id')
+                ->toArray();
         } else {
             $areaIds = DB::table('areas')->pluck('id')->toArray();
         }

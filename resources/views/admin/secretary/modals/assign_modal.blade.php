@@ -27,16 +27,23 @@
                                 @foreach ($areas as $area)
                                     <div class="col-md-4 mb-2">
                                         <div class="custom-control custom-checkbox">
-                                            <input type="checkbox" name="areas[]" value="{{ $area->id }}"
-                                                class="custom-control-input"
-                                                id="areaCheck{{ $secretary->id }}_{{ $area->id }}"
-                                                {{ $area->secretary_id == $secretary->id ? 'checked' : '' }}>
-                                            <label class="custom-control-label font-weight-normal" for="areaCheck{{ $secretary->id }}_{{ $area->id }}">
-                                                {{ $area->areas_name }}
-                                                @if ($area->secretary_id != $secretary->id && $area->secretary_name)
-                                                    <span class="text-muted small">({{ $area->secretary_name }})</span>
-                                                @endif
-                                            </label>
+                                                @php
+                                                    $isAssigned = $secretaryAreas->contains(function($sa) use ($secretary, $area) {
+                                                        return $sa->secretary_id == $secretary->id &&
+                                                               $sa->location_name === $area->location_name &&
+                                                               $sa->areas_name === $area->areas_name;
+                                                    });
+                                                @endphp
+                                                <input type="checkbox" name="areas[]" value="{{ $area->id }}"
+                                                    class="custom-control-input"
+                                                    id="areaCheck{{ $secretary->id }}_{{ $area->id }}"
+                                                    {{ $isAssigned ? 'checked' : '' }}>
+                                                <label class="custom-control-label font-weight-normal" for="areaCheck{{ $secretary->id }}_{{ $area->id }}">
+                                                    {{ $area->areas_name }}
+                                                    @if (!$isAssigned && !empty($area->secretary_names))
+                                                        <span class="text-muted small">({{ implode(', ', $area->secretary_names) }})</span>
+                                                    @endif
+                                                </label>
                                         </div>
                                     </div>
                                 @endforeach
