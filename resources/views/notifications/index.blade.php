@@ -150,6 +150,109 @@
             color: #dc3545 !important;
             font-weight: 700;
         }
+
+        /* PREMIUM NOTIFICATION UI */
+        .notification-item {
+            margin-bottom: 12px;
+            border-radius: 12px !important;
+            background: #ffffff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.015);
+            border: 1px solid #eef2f5 !important;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .notification-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+            background-color: #fbfcfd;
+            border-color: #e2e8f0 !important;
+        }
+
+        .notification-item.unread {
+            background-color: rgba(255, 95, 0, 0.02);
+            border-left: 5px solid #FF5F00 !important;
+            border-color: rgba(255, 95, 0, 0.12) !important;
+        }
+
+        .notification-item.unread::before {
+            content: '';
+            position: absolute;
+            top: 22px;
+            right: 20px;
+            width: 8px;
+            height: 8px;
+            background-color: #FF5F00;
+            border-radius: 50%;
+        }
+
+        .icon-wrapper {
+            transition: all 0.3s ease;
+            width: 45px;
+            height: 45px;
+            background: #f8f9fa;
+            border-radius: 50%;
+        }
+
+        .notification-item:hover .icon-wrapper {
+            transform: scale(1.08);
+            background-color: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .mark-read-btn {
+            border: 1px solid #FF5F00 !important;
+            color: #FF5F00 !important;
+            background: transparent !important;
+            font-weight: 600 !important;
+            transition: all 0.2s ease !important;
+            padding: 4px 12px !important;
+            border-radius: 30px !important;
+            font-size: 11px;
+        }
+
+        .mark-read-btn:hover {
+            background: #FF5F00 !important;
+            color: #fff !important;
+            box-shadow: 0 4px 10px rgba(255, 95, 0, 0.2) !important;
+        }
+
+        .filter-card {
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+            border: 1px solid #eef2f5;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+
+        .filter-card label {
+            font-weight: 600;
+            color: #495057;
+            font-size: 13px;
+        }
+
+        .filter-card .form-control {
+            border-radius: 8px;
+            border: 1px solid #ced4da;
+            padding: 10px 12px;
+            height: auto;
+            transition: all 0.2s ease;
+        }
+
+        .filter-card .form-control:focus {
+            border-color: #FF5F00;
+            box-shadow: 0 0 0 0.2rem rgba(255, 95, 0, 0.15);
+        }
+
+        .spinner-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            width: 100%;
+        }
     </style>
 </head>
 
@@ -192,21 +295,26 @@
 
             <div class="content-header">
                 <div class="container-fluid">
-                    <form action="{{ route($rolePrefix . '.dashboard.page') }}" method="GET" class="row g-2">
-                        <div class="col-sm-4">
-                            <label>From</label>
-                            <input type="date" name="from" class="form-control" value="{{ $displayFrom }}">
-                        </div>
-                        <div class="col-sm-4">
-                            <label>To</label>
-                            <input type="date" name="to" class="form-control" value="{{ $displayTo }}">
-                        </div>
-                        <div class="col-sm-4 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary mr-2">Apply Filter</button>
-                            <a href="{{ route($rolePrefix . '.dashboard.page') }}"
-                                class="btn btn-outline-secondary">Reset</a>
-                        </div>
-                    </form>
+                    <div class="filter-card">
+                        <form action="{{ route('notifications.index') }}" method="GET" class="row align-items-end">
+                            <div class="col-md-4 mb-2 mb-md-0">
+                                <label><i class="far fa-calendar-alt mr-1"></i> From Date</label>
+                                <input type="date" name="from" class="form-control" value="{{ $displayFrom }}">
+                            </div>
+                            <div class="col-md-4 mb-2 mb-md-0">
+                                <label><i class="far fa-calendar-alt mr-1"></i> To Date</label>
+                                <input type="date" name="to" class="form-control" value="{{ $displayTo }}">
+                            </div>
+                            <div class="col-md-4 d-flex">
+                                <button type="submit" class="btn btn-primary mr-2 flex-grow-1" style="background-color: #FF5F00 !important; border-color: #FF5F00 !important; border-radius: 8px; font-weight: 600; padding: 10px 16px;">
+                                    <i class="fas fa-filter mr-1"></i> Apply Filter
+                                </button>
+                                <a href="{{ route('notifications.index') }}" class="btn btn-outline-secondary flex-grow-1" style="border-radius: 8px; padding: 10px 16px; font-weight: 600;">
+                                    <i class="fas fa-undo mr-1"></i> Reset
+                                </a>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
 
@@ -219,106 +327,38 @@
                 <div class="container-fluid mt-4">
                     <div class="row">
                         <div class="col-12">
-                            {{-- Using your existing table-card class for consistent styling --}}
-                            <div class="card table-card">
-                                <div
-                                    class="card-header d-flex justify-content-between align-items-center bg-white py-3">
-                                    <h5 class="section-title mb-0">
-                                        <i class="fas fa-bell mr-2" style="color: #FF5F00;"></i> Notifications
-                                    </h5>
-                                    @if (!$notifications->isEmpty())
-                                        <button id="markAllBtn" class="btn btn-sm btn-primary">
-                                            <i class="fas fa-check-double mr-1"></i> Mark All as Read
-                                        </button>
-                                    @endif
+                            <div class="card table-card" style="border-radius: 16px;">
+                                <div class="card-header bg-white py-3 border-bottom-0">
+                                    <div class="d-flex justify-content-between align-items-center w-100">
+                                        <h5 class="section-title mb-0 d-inline-block">
+                                            <i class="fas fa-bell mr-2" style="color: #FF5F00;"></i> Notifications History
+                                        </h5>
+                                        @if (!$notifications->isEmpty())
+                                            <button id="markAllBtn" class="btn btn-sm btn-primary" style="border-radius: 8px; font-weight: 600;">
+                                                <i class="fas fa-check-double mr-1"></i> Mark All as Read
+                                            </button>
+                                        @endif
+                                    </div>
                                 </div>
 
-                                <div class="card-body p-0">
+                                <div class="card-body p-4" style="background-color: #f4f6f9;">
                                     @if ($notifications->isEmpty())
-                                        <div class="text-center py-5">
+                                        <div class="text-center py-5 bg-white rounded-lg shadow-sm border" style="border-radius: 12px !important;">
                                             <i class="fas fa-inbox fa-3x mb-3 text-muted"></i>
-                                            <p class="text-muted">No notifications found.</p>
+                                            <p class="text-muted font-weight-bold">No notifications found.</p>
                                         </div>
                                     @else
-                                        <div class="list-group list-group-flush">
-                                            @foreach ($notifications as $note)
-                                                @php
-                                                    $data = json_decode($note->data, true) ?? [];
-                                                    $message = $data['message'] ?? ($data['title'] ?? 'Notification');
-                                                    $areaName = $note->area_name ?? ($note->area_id ?? 'N/A');
-                                                    $isUnread = is_null($note->read_at);
+                                        <div class="list-group list-group-flush" id="notificationContainer" style="background: transparent;">
+                                            @include('notifications.partials.list')
+                                        </div>
 
-                                                    // Custom Icons & Colors based on dashboard palette
-                                                    $icon = 'fas fa-info-circle';
-                                                    $iconColor = '#007bff';
-                                                    if (Str::contains($note->type, 'Lapsed')) {
-                                                        $icon = 'fas fa-exclamation-triangle';
-                                                        $iconColor = '#dc3545'; // Red for urgency
-                                                    } elseif (Str::contains($note->type, 'NewClient')) {
-                                                        $icon = 'fas fa-user-plus';
-                                                        $iconColor = '#28a745'; // Green
-                                                    } elseif (Str::contains($note->type, 'Payment')) {
-                                                        $icon = 'fas fa-receipt';
-                                                        $iconColor = '#FF5F00'; // Brand Orange
-                                                    }
-                                                @endphp
-
-                                                <div class="list-group-item list-group-item-action border-0 p-3 notification-item {{ $isUnread ? 'unread' : '' }}"
-                                                    data-id="{{ $note->id }}"
-                                                    style="border-left: 4px solid {{ $isUnread ? '#FF5F00' : 'transparent' }} !important;">
-
-                                                    <div class="d-flex align-items-center">
-                                                        <div class="icon-wrapper mr-3 d-flex align-items-center justify-content-center"
-                                                            style="width: 45px; height: 45px; background: #f8f9fa; border-radius: 50%;">
-                                                            <i class="{{ $icon }}"
-                                                                style="color: {{ $iconColor }}; font-size: 1.2rem;"></i>
-                                                        </div>
-
-                                                        <div class="flex-grow-1">
-                                                            <div
-                                                                class="d-flex justify-content-between align-items-start">
-                                                                <div>
-                                                                    <div class="message-text {{ $isUnread ? 'font-weight-bold' : '' }}"
-                                                                        style="font-size: 14px; color: #333;">
-                                                                        {{ $message }}
-                                                                    </div>
-                                                                    <div class="small mt-1 text-muted">
-                                                                        <span class="badge badge-light shadow-sm">Area:
-                                                                            {{ $areaName }}</span>
-                                                                        <span class="mx-1">•</span>
-                                                                        <i
-                                                                            class="far fa-clock mr-1"></i>{{ \Carbon\Carbon::parse($note->created_at)->diffForHumans() }}
-                                                                    </div>
-                                                                </div>
-
-                                                                <div class="action-area text-right ml-2">
-                                                                    @if ($isUnread)
-                                                                        <button
-                                                                            class="btn btn-xs btn-outline-primary mark-read-btn"
-                                                                            style="font-size: 11px; border-radius: 20px;">
-                                                                            Mark Read
-                                                                        </button>
-                                                                    @else
-                                                                        <i class="fas fa-check-circle text-success"
-                                                                            title="Read"></i>
-                                                                    @endif
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            @endforeach
+                                        <div id="loadingIndicator" class="text-center py-3" style="display: none;">
+                                            <div class="spinner-border text-primary" role="status" style="color: #FF5F00 !important; width: 1.5rem; height: 1.5rem;">
+                                                <span class="sr-only">Loading...</span>
+                                            </div>
                                         </div>
                                     @endif
                                 </div>
-
-                                @if ($notifications->hasPages())
-                                    <div class="card-footer bg-white border-top-0">
-                                        <div class="d-flex justify-content-center">
-                                            {{ $notifications->links() }}
-                                        </div>
-                                    </div>
-                                @endif
                             </div>
                         </div>
                     </div>
@@ -397,25 +437,24 @@
                     if (res.success) {
                         // update UI to read
                         $item.removeClass('unread');
-                        $item.css('border-left', '4px solid transparent');
                         $btn.replaceWith('<i class="fas fa-check-circle text-success" title="Read"></i>');
-                        Notyf && new Notyf().success('Marked read');
+                        Notyf && new Notyf({ duration: 3000, position: { x: 'right', y: 'top' } }).success('Notification marked as read');
                     } else {
                         $btn.prop('disabled', false);
-                        Notyf && new Notyf().error('Failed to mark read');
+                        Notyf && new Notyf({ duration: 3000, position: { x: 'right', y: 'top' } }).error('Failed to mark read');
                     }
                 })
                 .fail(function() {
                     $btn.prop('disabled', false);
-                    Notyf && new Notyf().error('Request failed');
+                    Notyf && new Notyf({ duration: 3000, position: { x: 'right', y: 'top' } }).error('Request failed');
                 });
         });
 
-        // Mark all notifications on current page as read
+        // Mark all notifications as read
         $(document).on('click', '#markAllBtn', function(e) {
             e.preventDefault();
             const $btn = $(this);
-            if (!confirm('Mark all notifications on this page as read?')) return;
+            if (!confirm('Mark all notifications as read?')) return;
 
             $btn.prop('disabled', true);
 
@@ -425,21 +464,62 @@
                         $('.notification-item.unread').each(function() {
                             const $item = $(this);
                             $item.removeClass('unread');
-                            $item.css('border-left', '4px solid transparent');
                             $item.find('.mark-read-btn').replaceWith(
                                 '<i class="fas fa-check-circle text-success" title="Read"></i>');
                         });
-                        Notyf && new Notyf().success('All marked read');
+                        Notyf && new Notyf({ duration: 3000, position: { x: 'right', y: 'top' } }).success('All notifications marked as read');
                     } else {
-                        Notyf && new Notyf().error('Failed to mark all');
+                        Notyf && new Notyf({ duration: 3000, position: { x: 'right', y: 'top' } }).error('Failed to mark all as read');
                         $btn.prop('disabled', false);
                     }
                 })
                 .fail(function() {
-                    Notyf && new Notyf().error('Request failed');
+                    Notyf && new Notyf({ duration: 3000, position: { x: 'right', y: 'top' } }).error('Request failed');
                     $btn.prop('disabled', false);
                 });
         });
+
+        // INFINITE SCROLL
+        var page = 1;
+        var hasMorePages = {{ $notifications->hasMorePages() ? 'true' : 'false' }};
+        var loading = false;
+
+        $(window).scroll(function() {
+            if ($(window).scrollTop() + $(window).height() >= $(document).height() - 150) {
+                if (hasMorePages && !loading) {
+                    loadMoreNotifications();
+                }
+            }
+        });
+
+        function loadMoreNotifications() {
+            loading = true;
+            $('#loadingIndicator').show();
+            page++;
+
+            var url = new URL(window.location.href);
+            url.searchParams.set('page', page);
+
+            $.ajax({
+                url: url.toString(),
+                type: 'GET',
+                success: function(data) {
+                    if (data.trim() === '') {
+                        hasMorePages = false;
+                        $('#loadingIndicator').html('<p class="text-muted small py-2 font-weight-bold">No more notifications.</p>');
+                    } else {
+                        $('#notificationContainer').append(data);
+                        loading = false;
+                        $('#loadingIndicator').hide();
+                    }
+                },
+                error: function() {
+                    loading = false;
+                    $('#loadingIndicator').hide();
+                    Notyf && new Notyf({ duration: 3000, position: { x: 'right', y: 'top' } }).error('Failed to load more notifications.');
+                }
+            });
+        }
     </script>
 </body>
 

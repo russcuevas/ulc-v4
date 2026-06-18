@@ -19,6 +19,13 @@ class NotificationsController extends Controller
         $role = Session::get('role');
         $notifiableType = $role === 'collector' ? 'App\Models\Collector' : ($role === 'secretary' ? 'App\Models\Secretary' : 'App\Models\Admin');
 
+        // Date Filter
+        $from = $request->query('from');
+        $to = $request->query('to');
+        $isFiltered = $from && $to && Carbon::hasFormat($from, 'Y-m-d') && Carbon::hasFormat($to, 'Y-m-d');
+        $displayFrom = $isFiltered ? $from : '';
+        $displayTo = $isFiltered ? $to : '';
+
         // Determine accessible area IDs based on user role
         if ($role === 'collector') {
             $areaIds = DB::table('areas')->where('collector_id', $sessionUser->id)->pluck('id')->toArray();
@@ -56,17 +63,23 @@ class NotificationsController extends Controller
                 })
                 ->leftJoin('areas as a', 'an.area_id', '=', 'a.id')
                 ->whereIn('an.area_id', $areaIds)
+                ->when($isFiltered, function($q) use ($from, $to) {
+                    $q->whereBetween('an.created_at', [Carbon::parse($from)->startOfDay(), Carbon::parse($to)->endOfDay()]);
+                })
                 ->select('an.*', 'r.read_at', 'a.areas_name as area_name', 'a.location_name')
                 ->orderBy('an.created_at', 'desc')
-                ->paginate(50);
+                ->paginate(15);
+        }
+
+        if ($request->ajax()) {
+            return view('notifications.partials.list', compact('notifications'))->render();
         }
 
         return view('notifications.index', [
             'notifications' => $notifications,
-            // Defaults for dashboard header used in the view
-            'isFiltered' => false,
-            'displayFrom' => '',
-            'displayTo' => '',
+            'isFiltered' => $isFiltered,
+            'displayFrom' => $displayFrom,
+            'displayTo' => $displayTo,
         ]);
     }
 
