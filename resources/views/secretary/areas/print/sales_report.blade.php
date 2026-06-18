@@ -83,7 +83,7 @@
                         <tr>
                             <td>{{ $loan->pn_number }}</td>
                             <td class="text-uppercase">{{ $loan->loan_status }}</td>
-                            <td>{{ \Carbon\Carbon::parse($loan->created_at)->format('m/d/Y') }}</td>
+                            <td>{{ \Carbon\Carbon::parse($loan->loan_from)->format('m/d/Y') }}</td>
                             <td>{{ $loan->fullname }}</td>
                             <td>{{ $loan->areas_name }}</td>
                             <td>{{ \Carbon\Carbon::parse($loan->loan_from)->format('m/d/Y') }}</td>

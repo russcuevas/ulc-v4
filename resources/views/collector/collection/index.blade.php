@@ -109,17 +109,23 @@
                                             [{{ $area->areas_name ?? 'N/A' }}]</h3>
 
 
-                                         <div class="d-flex align-items-center" style="gap: 10px;">
-                                            @if($myAreas->count() > 1)
-                                                <div class="input-group input-group-sm mr-2" style="width: auto; max-width: 250px;">
+                                        <div class="d-flex align-items-center" style="gap: 10px;">
+                                            @if ($myAreas->count() > 1)
+                                                <div class="input-group input-group-sm mr-2"
+                                                    style="width: auto; max-width: 250px;">
                                                     <div class="input-group-prepend">
-                                                        <span class="input-group-text bg-primary text-white border-primary" style="background-color: #FF5F00 !important; border-color: #FF5F00 !important;">
+                                                        <span
+                                                            class="input-group-text bg-primary text-white border-primary"
+                                                            style="background-color: #FF5F00 !important; border-color: #FF5F00 !important;">
                                                             <i class="fas fa-map-marker-alt"></i>
                                                         </span>
                                                     </div>
-                                                    <select id="areaSelect" class="form-control form-control-sm border-primary" style="font-weight: 600; color: #333; border-color: #FF5F00 !important;">
+                                                    <select id="areaSelect"
+                                                        class="form-control form-control-sm border-primary"
+                                                        style="font-weight: 600; color: #333; border-color: #FF5F00 !important;">
                                                         @foreach ($myAreas as $a)
-                                                            <option value="{{ $a->id }}" {{ $selectedAreaId == $a->id ? 'selected' : '' }}>
+                                                            <option value="{{ $a->id }}"
+                                                                {{ $selectedAreaId == $a->id ? 'selected' : '' }}>
                                                                 {{ $a->location_name }} - [{{ $a->areas_name }}]
                                                             </option>
                                                         @endforeach
@@ -216,6 +222,15 @@
                                             </div>
                                         </div>
                                     </div>
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <div id="filterTabs" class="btn-group" role="group" aria-label="Filter">
+                                            <button type="button" class="btn btn-outline-primary active"
+                                                data-filter="normal">Normal Account</button>
+                                            <button type="button" class="btn btn-outline-primary"
+                                                data-filter="lapsed">Lapsed Account</button>
+                                        </div>
+                                    </div>
+                                    <input type="hidden" id="currentFilter" value="normal">
                                     @csrf
                                     <table id="manilaTable" class="table table-bordered table-hover">
                                         <thead>
@@ -232,6 +247,7 @@
                                         <tbody>
                                             @foreach ($clients as $client)
                                                 <tr class="{{ $client->is_overdue ? 'table-danger' : '' }}"
+                                                    data-status="{{ $client->is_overdue ? 'lapsed' : 'normal' }}"
                                                     data-client-id="{{ $client->id }}"
                                                     data-loan-id="{{ $client->loan->id ?? '' }}"
                                                     data-area-id="{{ $client->area_id }}"
@@ -243,8 +259,8 @@
                                                         @if ($client->payment)
                                                             {{ \Carbon\Carbon::parse($client->payment->due_date)->format('Y-m-d') }}
                                                         @else
-                                                            <input type="date" value="{{ $selectedDate }}" readonly
-                                                                class="form-control">
+                                                            <input type="date" value="{{ $selectedDate }}"
+                                                                readonly class="form-control">
                                                         @endif
                                                     </td>
 
@@ -293,9 +309,9 @@
                                                             <form action="{{ route('collector.collections.store') }}"
                                                                 method="POST">
                                                                 @csrf
-                                                                <input type="number" step="0.01" name="collection"
-                                                                    class="form-control" min="1"
-                                                                    placeholder="Enter amount if any">
+                                                                <input type="number" step="0.01"
+                                                                    name="collection" class="form-control"
+                                                                    min="1" placeholder="Enter amount if any">
 
                                                                 <!-- Helper text -->
                                                                 <small class="form-text" style="color: brown">Leave
@@ -411,6 +427,26 @@
                 "searching": true,
                 "ordering": true,
                 "responsive": true
+            });
+
+            // Custom filter using data-status attribute on <tr>
+            $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+                if (settings.nTable.id !== 'manilaTable') return true;
+                var filter = $('#currentFilter').val();
+                if (!filter || filter === 'all') return true;
+                var node = table.row(dataIndex).node();
+                var status = $(node).data('status');
+                if (filter === 'lapsed') return status === 'lapsed';
+                if (filter === 'normal') return status === 'normal';
+                return true;
+            });
+
+            $('#filterTabs button').on('click', function() {
+                var filter = $(this).data('filter');
+                $('#filterTabs button').removeClass('active');
+                $(this).addClass('active');
+                $('#currentFilter').val(filter);
+                table.draw();
             });
 
             // Lazy loading variables
