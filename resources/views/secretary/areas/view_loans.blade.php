@@ -279,14 +279,80 @@
     </script>
     <script>
         $(function() {
+            function setupLazyLoad(tableId, initialCount = 15) {
+                var table = $(tableId).DataTable({
+                    "paging": false,
+                    "searching": true,
+                    "ordering": true,
+                    "responsive": true
+                });
 
-            $('#loanTable').DataTable({
-                "paging": true,
-                "searching": true,
-                "ordering": true,
-                "responsive": true
-            });
+                var visibleCount = initialCount;
+                var isLoadPending = false;
+                var loaderId = tableId.replace('#', '') + '_lazyLoader';
 
+                var loaderHtml = '<div id="' + loaderId + '" class="text-center py-3 lazy-loader-indicator" style="display: none;">' +
+                    '<div class="spinner-border text-primary" role="status" style="color: #FF5F00 !important;">' +
+                    '<span class="sr-only">Loading...</span>' +
+                    '</div>' +
+                    '</div>';
+                $(tableId).after(loaderHtml);
+
+                if ($('#lazy-hidden-style').length === 0) {
+                    $('head').append('<style id="lazy-hidden-style">.lazy-hidden { display: none !important; }</style>');
+                }
+
+                function applyLazyLoading() {
+                    var matchingRows = $(tableId + ' tbody tr').filter(function() {
+                        return $(this).css('display') !== 'none' || $(this).hasClass('lazy-hidden');
+                    });
+
+                    var hasMore = false;
+                    matchingRows.each(function(index) {
+                        if (index >= visibleCount) {
+                            $(this).addClass('lazy-hidden').css('display', 'none');
+                            hasMore = true;
+                        } else {
+                            $(this).removeClass('lazy-hidden');
+                            if ($(this).css('display') === 'none') {
+                                $(this).css('display', '');
+                            }
+                        }
+                    });
+
+                    if (hasMore) {
+                        $('#' + loaderId).show();
+                    } else {
+                        $('#' + loaderId).hide();
+                    }
+                }
+
+                $(window).on('scroll', function() {
+                    if (isLoadPending) return;
+
+                    if ($(window).scrollTop() + $(window).height() >= $(document).height() - 100) {
+                        if ($(tableId + ' tbody tr.lazy-hidden').length > 0) {
+                            isLoadPending = true;
+                            $('#' + loaderId).show();
+
+                            setTimeout(function() {
+                                visibleCount += 15;
+                                applyLazyLoading();
+                                isLoadPending = false;
+                            }, 500);
+                        }
+                    }
+                });
+
+                table.on('draw', function() {
+                    visibleCount = initialCount;
+                    applyLazyLoading();
+                });
+
+                applyLazyLoading();
+            }
+
+            setupLazyLoad('#loanTable');
         });
     </script>
 </body>

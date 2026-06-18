@@ -306,10 +306,13 @@
                                 <input type="date" name="to" class="form-control" value="{{ $displayTo }}">
                             </div>
                             <div class="col-md-4 d-flex">
-                                <button type="submit" class="btn btn-primary mr-2 flex-grow-1" style="background-color: #FF5F00 !important; border-color: #FF5F00 !important; border-radius: 8px; font-weight: 600; padding: 10px 16px;">
+                                <button type="submit" class="btn btn-primary mr-2 flex-grow-1"
+                                    style="background-color: #FF5F00 !important; border-color: #FF5F00 !important; border-radius: 8px; font-weight: 600; padding: 10px 16px;">
                                     <i class="fas fa-filter mr-1"></i> Apply Filter
                                 </button>
-                                <a href="{{ route('notifications.index') }}" class="btn btn-outline-secondary flex-grow-1" style="border-radius: 8px; padding: 10px 16px; font-weight: 600;">
+                                <a href="{{ route('notifications.index') }}"
+                                    class="btn btn-outline-secondary flex-grow-1"
+                                    style="border-radius: 8px; padding: 10px 16px; font-weight: 600;">
                                     <i class="fas fa-undo mr-1"></i> Reset
                                 </a>
                             </div>
@@ -328,32 +331,35 @@
                     <div class="row">
                         <div class="col-12">
                             <div class="card table-card" style="border-radius: 16px;">
-                                <div class="card-header bg-white py-3 border-bottom-0">
-                                    <div class="d-flex justify-content-between align-items-center w-100">
-                                        <h5 class="section-title mb-0 d-inline-block">
-                                            <i class="fas fa-bell mr-2" style="color: #FF5F00;"></i> Notifications History
-                                        </h5>
-                                        @if (!$notifications->isEmpty())
-                                            <button id="markAllBtn" class="btn btn-sm btn-primary" style="border-radius: 8px; font-weight: 600;">
-                                                <i class="fas fa-check-double mr-1"></i> Mark All as Read
-                                            </button>
-                                        @endif
-                                    </div>
+                                <div
+                                    class="card-header bg-white py-3 border-bottom-0 d-flex justify-content-between align-items-center">
+                                    <h5 class="section-title mb-0 d-inline-block">
+                                        <i class="fas fa-bell mr-2" style="color: #FF5F00;"></i> Notifications History
+                                    </h5>
+                                    @if (!$notifications->isEmpty())
+                                        <button id="markAllBtn" class="btn btn-sm btn-primary"
+                                            style="border-radius: 8px; font-weight: 600;">
+                                            <i class="fas fa-check-double mr-1"></i> Mark All as Read
+                                        </button>
+                                    @endif
                                 </div>
 
                                 <div class="card-body p-4" style="background-color: #f4f6f9;">
                                     @if ($notifications->isEmpty())
-                                        <div class="text-center py-5 bg-white rounded-lg shadow-sm border" style="border-radius: 12px !important;">
+                                        <div class="text-center py-5 bg-white rounded-lg shadow-sm border"
+                                            style="border-radius: 12px !important;">
                                             <i class="fas fa-inbox fa-3x mb-3 text-muted"></i>
                                             <p class="text-muted font-weight-bold">No notifications found.</p>
                                         </div>
                                     @else
-                                        <div class="list-group list-group-flush" id="notificationContainer" style="background: transparent;">
+                                        <div class="list-group list-group-flush" id="notificationContainer"
+                                            style="background: transparent;">
                                             @include('notifications.partials.list')
                                         </div>
 
                                         <div id="loadingIndicator" class="text-center py-3" style="display: none;">
-                                            <div class="spinner-border text-primary" role="status" style="color: #FF5F00 !important; width: 1.5rem; height: 1.5rem;">
+                                            <div class="spinner-border text-primary" role="status"
+                                                style="color: #FF5F00 !important; width: 1.5rem; height: 1.5rem;">
                                                 <span class="sr-only">Loading...</span>
                                             </div>
                                         </div>
@@ -438,15 +444,33 @@
                         // update UI to read
                         $item.removeClass('unread');
                         $btn.replaceWith('<i class="fas fa-check-circle text-success" title="Read"></i>');
-                        Notyf && new Notyf({ duration: 3000, position: { x: 'right', y: 'top' } }).success('Notification marked as read');
+                        Notyf && new Notyf({
+                            duration: 3000,
+                            position: {
+                                x: 'right',
+                                y: 'top'
+                            }
+                        }).success('Notification marked as read');
                     } else {
                         $btn.prop('disabled', false);
-                        Notyf && new Notyf({ duration: 3000, position: { x: 'right', y: 'top' } }).error('Failed to mark read');
+                        Notyf && new Notyf({
+                            duration: 3000,
+                            position: {
+                                x: 'right',
+                                y: 'top'
+                            }
+                        }).error('Failed to mark read');
                     }
                 })
                 .fail(function() {
                     $btn.prop('disabled', false);
-                    Notyf && new Notyf({ duration: 3000, position: { x: 'right', y: 'top' } }).error('Request failed');
+                    Notyf && new Notyf({
+                        duration: 3000,
+                        position: {
+                            x: 'right',
+                            y: 'top'
+                        }
+                    }).error('Request failed');
                 });
         });
 
@@ -467,14 +491,32 @@
                             $item.find('.mark-read-btn').replaceWith(
                                 '<i class="fas fa-check-circle text-success" title="Read"></i>');
                         });
-                        Notyf && new Notyf({ duration: 3000, position: { x: 'right', y: 'top' } }).success('All notifications marked as read');
+                        Notyf && new Notyf({
+                            duration: 3000,
+                            position: {
+                                x: 'right',
+                                y: 'top'
+                            }
+                        }).success('All notifications marked as read');
                     } else {
-                        Notyf && new Notyf({ duration: 3000, position: { x: 'right', y: 'top' } }).error('Failed to mark all as read');
+                        Notyf && new Notyf({
+                            duration: 3000,
+                            position: {
+                                x: 'right',
+                                y: 'top'
+                            }
+                        }).error('Failed to mark all as read');
                         $btn.prop('disabled', false);
                     }
                 })
                 .fail(function() {
-                    Notyf && new Notyf({ duration: 3000, position: { x: 'right', y: 'top' } }).error('Request failed');
+                    Notyf && new Notyf({
+                        duration: 3000,
+                        position: {
+                            x: 'right',
+                            y: 'top'
+                        }
+                    }).error('Request failed');
                     $btn.prop('disabled', false);
                 });
         });
@@ -506,7 +548,8 @@
                 success: function(data) {
                     if (data.trim() === '') {
                         hasMorePages = false;
-                        $('#loadingIndicator').html('<p class="text-muted small py-2 font-weight-bold">No more notifications.</p>');
+                        $('#loadingIndicator').html(
+                            '<p class="text-muted small py-2 font-weight-bold">No more notifications.</p>');
                     } else {
                         $('#notificationContainer').append(data);
                         loading = false;
@@ -516,7 +559,13 @@
                 error: function() {
                     loading = false;
                     $('#loadingIndicator').hide();
-                    Notyf && new Notyf({ duration: 3000, position: { x: 'right', y: 'top' } }).error('Failed to load more notifications.');
+                    Notyf && new Notyf({
+                        duration: 3000,
+                        position: {
+                            x: 'right',
+                            y: 'top'
+                        }
+                    }).error('Failed to load more notifications.');
                 }
             });
         }

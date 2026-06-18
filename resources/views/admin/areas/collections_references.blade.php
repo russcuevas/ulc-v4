@@ -92,6 +92,10 @@
         .action-buttons button:last-child {
             margin-right: 0;
         }
+
+        .lazy-hidden {
+            display: none !important;
+        }
     </style>
 </head>
 
@@ -175,6 +179,11 @@
                                     @endforeach
                                 </tbody>
                             </table>
+                            <div id="lazyLoader" class="text-center py-3" style="display: none;">
+                                <div class="spinner-border text-primary" role="status" style="color: #FF5F00 !important;">
+                                    <span class="sr-only">Loading...</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -243,12 +252,70 @@
     <script>
         $(function() {
 
-            $('#referencesTable').DataTable({
-                "paging": true,
+            var table = $('#referencesTable').DataTable({
+                "paging": false,
                 "searching": true,
                 "ordering": true,
                 "responsive": true
             });
+
+            // Lazy loading variables
+            var visibleCount = 15;
+            var isLoadPending = false;
+
+            function applyLazyLoading() {
+                var matchingRows = $('#referencesTable tbody tr').filter(function() {
+                    return $(this).css('display') !== 'none' || $(this).hasClass('lazy-hidden');
+                });
+
+                var totalMatching = matchingRows.length;
+                var hasMore = false;
+
+                matchingRows.each(function(index) {
+                    if (index >= visibleCount) {
+                        $(this).addClass('lazy-hidden').css('display', 'none');
+                        hasMore = true;
+                    } else {
+                        $(this).removeClass('lazy-hidden');
+                        if ($(this).css('display') === 'none') {
+                            $(this).css('display', '');
+                        }
+                    }
+                });
+
+                if (hasMore) {
+                    $('#lazyLoader').show();
+                } else {
+                    $('#lazyLoader').hide();
+                }
+            }
+
+            // On scroll, check if we need to load more
+            $(window).on('scroll', function() {
+                if (isLoadPending) return;
+
+                if ($(window).scrollTop() + $(window).height() >= $(document).height() - 100) {
+                    if ($('#referencesTable tbody tr.lazy-hidden').length > 0) {
+                        isLoadPending = true;
+                        $('#lazyLoader').show();
+
+                        setTimeout(function() {
+                            visibleCount += 15;
+                            applyLazyLoading();
+                            isLoadPending = false;
+                        }, 500);
+                    }
+                }
+            });
+
+            // Hook into table draw to reset count and apply lazy loading on search/filter/order changes
+            table.on('draw', function() {
+                visibleCount = 15;
+                applyLazyLoading();
+            });
+
+            // Initial call
+            applyLazyLoading();
 
         });
     </script>

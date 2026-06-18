@@ -507,10 +507,8 @@
         });
     </script>
     <script>
-        $(function() {
-
-            var table = $('#referencesTable').DataTable({
-                "paging": true,
+                   var table = $('#referencesTable').DataTable({
+                "paging": false,
                 "searching": true,
                 "ordering": true,
                 "responsive": true,
@@ -574,6 +572,71 @@
                     }));
                 }
             });
+
+            // Lazy loading variables
+            var visibleCount = 15;
+            var isLoadPending = false;
+            var loaderId = 'referencesTable_lazyLoader';
+
+            var loaderHtml = '<div id="' + loaderId + '" class="text-center py-3 lazy-loader-indicator" style="display: none;">' +
+                '<div class="spinner-border text-primary" role="status" style="color: #FF5F00 !important;">' +
+                '<span class="sr-only">Loading...</span>' +
+                '</div>' +
+                '</div>';
+            $('#referencesTable').after(loaderHtml);
+
+            if ($('#lazy-hidden-style').length === 0) {
+                $('head').append('<style id="lazy-hidden-style">.lazy-hidden { display: none !important; }</style>');
+            }
+
+            function applyLazyLoading() {
+                var matchingRows = $('#referencesTable tbody tr').filter(function() {
+                    return $(this).css('display') !== 'none' || $(this).hasClass('lazy-hidden');
+                });
+
+                var hasMore = false;
+                matchingRows.each(function(index) {
+                    if (index >= visibleCount) {
+                        $(this).addClass('lazy-hidden').css('display', 'none');
+                        hasMore = true;
+                    } else {
+                        $(this).removeClass('lazy-hidden');
+                        if ($(this).css('display') === 'none') {
+                            $(this).css('display', '');
+                        }
+                    }
+                });
+
+                if (hasMore) {
+                    $('#' + loaderId).show();
+                } else {
+                    $('#' + loaderId).hide();
+                }
+            }
+
+            $(window).on('scroll', function() {
+                if (isLoadPending) return;
+
+                if ($(window).scrollTop() + $(window).height() >= $(document).height() - 100) {
+                    if ($('#referencesTable tbody tr.lazy-hidden').length > 0) {
+                        isLoadPending = true;
+                        $('#' + loaderId).show();
+
+                        setTimeout(function() {
+                            visibleCount += 15;
+                            applyLazyLoading();
+                            isLoadPending = false;
+                        }, 500);
+                    }
+                }
+            });
+
+            table.on('draw', function() {
+                visibleCount = 15;
+                applyLazyLoading();
+            });
+
+            applyLazyLoading();
 
             // Custom filter using data-status attribute on <tr>
             $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
