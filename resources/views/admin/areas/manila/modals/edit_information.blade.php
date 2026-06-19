@@ -56,6 +56,9 @@
                                 <input type="hidden" name="loan_id" value="{{ $latestLoan->id }}">
 
                                 <div class="form-group">
+                                    <span style="color: red;">LAST PN:
+                                        [{{ \DB::table('clients_loans')->latest('id')->value('pn_number') ?? 'N/A' }}]
+                                    </span><br>
                                     <label>PN Number *</label>
                                     <input type="text" name="pn_number" class="form-control"
                                         value="{{ $latestLoan->pn_number }}" required>

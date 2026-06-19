@@ -61,9 +61,36 @@
             font-size: 11px;
         }
 
+        .text-danger-print {
+            color: red !important;
+            font-weight: bold;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        .bg-yellow-print {
+            background-color: yellow !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
         @media print {
             body {
                 margin: 10px;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .text-danger-print {
+                color: red !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .bg-yellow-print {
+                background-color: yellow !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
         }
     </style>
@@ -153,6 +180,13 @@
         </thead>
         <tbody>
             @foreach ($payments as $payment)
+                @php
+                    $balance = $payment->balance ?? 0;
+                    $hasBalance = $balance > 0;
+                    $today = \Carbon\Carbon::parse($payment->due_date);
+                    $loanEnd = \Carbon\Carbon::parse($payment->loan_to);
+                    $isLapsed = $hasBalance && $today->greaterThan($loanEnd);
+                @endphp
                 <tr>
                     <td>{{ $payment->fullname }}</td>
                     <td>₱{{ number_format($payment->loan_amount, 2) }}</td>
@@ -163,15 +197,12 @@
                         {{ is_numeric($payment->collection) ? '₱' . number_format($payment->collection, 2) : '-' }}
                     </td>
                     <td>{{ $payment->type ?? '-' }}</td>
-                    <td class="text-center">
-                        @php
-                            $balance = $payment->balance ?? 0;
-                            $hasBalance = $balance > 0;
-                            $today = \Carbon\Carbon::parse($payment->due_date);
-                            $loanEnd = \Carbon\Carbon::parse($payment->loan_to);
-                            $isLapsed = $hasBalance && $today->greaterThan($loanEnd);
-                        @endphp
-                        {{ $isLapsed ? 'YES' : 'NO' }}
+                    <td class="text-center @if ($isLapsed) bg-yellow-print @endif">
+                        @if ($isLapsed)
+                            <span class="text-danger-print">YES</span>
+                        @else
+                            NO
+                        @endif
                     </td>
                 </tr>
             @endforeach
