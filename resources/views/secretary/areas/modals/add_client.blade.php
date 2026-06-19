@@ -78,18 +78,21 @@
                             <div class="form-row">
                                 <div class="form-group col-md-6">
                                     <label>Loan From *</label>
-                                    <input type="date" name="loan_from" id="sec_add_loan_from" class="form-control" required>
+                                    <input type="date" name="loan_from" id="sec_add_loan_from" class="form-control"
+                                        required>
                                 </div>
                                 <div class="form-group col-md-6">
                                     <label>Loan To *</label>
-                                    <input type="date" name="loan_to" id="sec_add_loan_to" class="form-control" required>
+                                    <input type="date" name="loan_to" id="sec_add_loan_to" class="form-control"
+                                        required>
                                 </div>
                             </div>
 
                             <div class="form-row">
                                 <div class="form-group col-md-6">
                                     <label>Loan Amount *</label>
-                                    <input type="number" name="loan_amount" id="sec_add_loan_amount" class="form-control" required>
+                                    <input type="number" name="loan_amount" id="sec_add_loan_amount"
+                                        class="form-control" required>
                                 </div>
 
                                 <div class="form-group col-md-6">
@@ -100,7 +103,7 @@
 
                             <div class="form-group">
                                 <label>Daily Payment *</label>
-                                <input type="number" name="daily" id="sec_add_daily" class="form-control" required>
+                                <input type="number" name="daily" class="form-control" required>
                             </div>
 
                             <div class="form-group">
@@ -141,44 +144,6 @@
             date.setDate(date.getDate() + 100);
             const toDate = date.toISOString().split('T')[0];
             document.getElementById('sec_add_loan_to').value = toDate;
-        }
-    });
-
-    // Loan Amount mapping
-    const secLoanAmountInput = document.getElementById('sec_add_loan_amount');
-    const secDailyInput = document.getElementById('sec_add_daily');
-
-    const secPaymentMapping = {
-        5000: 80,
-        7000: 100,
-        8000: 120,
-        10000: 150,
-        12000: 180,
-        15000: 225,
-        20000: 300,
-        25000: 400,
-        30000: 450,
-        35000: 500,
-        40000: 600,
-        45000: 700,
-        50000: 750,
-        60000: 900,
-        70000: 1000,
-        80000: 1200,
-        90000: 1400,
-        100000: 1500
-    };
-
-    secLoanAmountInput.addEventListener('input', function() {
-        const amount = parseInt(this.value);
-
-        if (secPaymentMapping[amount]) {
-            secDailyInput.value = secPaymentMapping[amount];
-        } else if (amount > 100000) {
-            // Keep it manual as requested
-        } else {
-            // Clear daily payment if not in mapping and not above 100k
-            secDailyInput.value = '';
         }
     });
 </script>

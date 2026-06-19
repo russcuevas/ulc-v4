@@ -96,13 +96,13 @@
 
                                 <div class="form-group col-md-6">
                                     <label>Balance *</label>
-                                    <input type="number" name="balance" id="add_balance" class="form-control" required>
+                                    <input type="number" name="balance" class="form-control" required>
                                 </div>
                             </div>
 
                             <div class="form-group">
                                 <label>Daily Payment *</label>
-                                <input type="number" name="daily" id="add_daily" class="form-control" required>
+                                <input type="number" name="daily" class="form-control" required>
                             </div>
 
                             <div class="form-group">
@@ -143,45 +143,6 @@
             date.setDate(date.getDate() + 100);
             const toDate = date.toISOString().split('T')[0];
             document.getElementById('add_loan_to').value = toDate;
-        }
-    });
-
-    // Loan Amount mapping and Balance auto-fill
-    const loanAmountInput = document.getElementById('add_loan_amount');
-    const balanceInput = document.getElementById('add_balance');
-    const dailyInput = document.getElementById('add_daily');
-
-    const paymentMapping = {
-        5000: 80,
-        7000: 100,
-        8000: 120,
-        10000: 150,
-        12000: 180,
-        15000: 225,
-        20000: 300,
-        25000: 400,
-        30000: 450,
-        35000: 500,
-        40000: 600,
-        45000: 700,
-        50000: 750,
-        60000: 900,
-        70000: 1000,
-        80000: 1200,
-        90000: 1400,
-        100000: 1500
-    };
-
-    loanAmountInput.addEventListener('input', function() {
-        const amount = parseInt(this.value);
-
-        if (paymentMapping[amount]) {
-            dailyInput.value = paymentMapping[amount];
-        } else if (amount > 100000) {
-            // Keep it manual as requested
-        } else {
-            // Clear daily payment if not in mapping and not above 100k
-            dailyInput.value = '';
         }
     });
 </script>

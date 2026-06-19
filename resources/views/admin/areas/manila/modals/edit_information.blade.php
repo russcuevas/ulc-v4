@@ -19,8 +19,8 @@
                             <h6 class="text-primary font-weight-bold mb-3">Personal Information</h6>
                             <div class="form-group">
                                 <label>Full Name</label>
-                                <input type="text" name="fullname" class="form-control" value="{{ $client->fullname }}"
-                                    required>
+                                <input type="text" name="fullname" class="form-control"
+                                    value="{{ $client->fullname }}" required>
                             </div>
 
                             <div class="form-group">
@@ -38,7 +38,8 @@
                             <div class="form-group">
                                 <label>Gender</label>
                                 <select name="gender" class="form-control" required>
-                                    <option value="male" {{ strtolower($client->gender) == 'male' ? 'selected' : '' }}>
+                                    <option value="male"
+                                        {{ strtolower($client->gender) == 'male' ? 'selected' : '' }}>
                                         Male
                                     </option>
                                     <option value="female"
@@ -88,14 +89,14 @@
 
                                     <div class="form-group col-md-6">
                                         <label>Balance *</label>
-                                        <input type="number" name="balance" id="edit_info_balance"
-                                            class="form-control" value="{{ $latestLoan->balance }}" required>
+                                        <input type="number" name="balance" class="form-control"
+                                            value="{{ $latestLoan->balance }}" required>
                                     </div>
                                 </div>
 
                                 <div class="form-group">
                                     <label>Daily Payment *</label>
-                                    <input type="number" name="daily" id="edit_info_daily" class="form-control"
+                                    <input type="number" name="daily" class="form-control"
                                         value="{{ $latestLoan->daily }}" required>
                                 </div>
 
@@ -138,43 +139,6 @@
             date.setDate(date.getDate() + 100);
             const toDate = date.toISOString().split('T')[0];
             document.getElementById('edit_info_loan_to').value = toDate;
-        }
-    });
-
-    // Loan Amount mapping and Balance auto-fill for Edit Information Modal
-    const editInfoLoanAmountInput = document.getElementById('edit_info_loan_amount');
-    const editInfoDailyInput = document.getElementById('edit_info_daily');
-
-    const editInfoPaymentMapping = {
-        5000: 80,
-        7000: 100,
-        8000: 120,
-        10000: 150,
-        12000: 180,
-        15000: 225,
-        20000: 300,
-        25000: 400,
-        30000: 450,
-        35000: 500,
-        40000: 600,
-        45000: 700,
-        50000: 750,
-        60000: 900,
-        70000: 1000,
-        80000: 1200,
-        90000: 1400,
-        100000: 1500
-    };
-
-    editInfoLoanAmountInput.addEventListener('input', function() {
-        const amount = parseInt(this.value);
-
-        if (editInfoPaymentMapping[amount]) {
-            editInfoDailyInput.value = editInfoPaymentMapping[amount];
-        } else if (amount > 100000) {
-            // Keep it manual
-        } else {
-            editInfoDailyInput.value = '';
         }
     });
 </script>

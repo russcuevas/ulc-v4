@@ -19,8 +19,8 @@
                             <h6 class="text-primary font-weight-bold mb-3">Personal Information</h6>
                             <div class="form-group">
                                 <label>Full Name</label>
-                                <input type="text" name="fullname" class="form-control" value="{{ $client->fullname }}"
-                                    required>
+                                <input type="text" name="fullname" class="form-control"
+                                    value="{{ $client->fullname }}" required>
                             </div>
 
                             <div class="form-group">
@@ -38,7 +38,8 @@
                             <div class="form-group">
                                 <label>Gender</label>
                                 <select name="gender" class="form-control" required>
-                                    <option value="male" {{ strtolower($client->gender) == 'male' ? 'selected' : '' }}>
+                                    <option value="male"
+                                        {{ strtolower($client->gender) == 'male' ? 'selected' : '' }}>
                                         Male
                                     </option>
                                     <option value="female"
@@ -74,8 +75,8 @@
                                     </div>
                                     <div class="form-group col-md-6">
                                         <label>Loan To *</label>
-                                        <input type="date" name="loan_to" id="sec_edit_info_loan_to" class="form-control"
-                                            value="{{ $latestLoan->loan_to }}" required>
+                                        <input type="date" name="loan_to" id="sec_edit_info_loan_to"
+                                            class="form-control" value="{{ $latestLoan->loan_to }}" required>
                                     </div>
                                 </div>
 
@@ -138,43 +139,6 @@
             date.setDate(date.getDate() + 100);
             const toDate = date.toISOString().split('T')[0];
             document.getElementById('sec_edit_info_loan_to').value = toDate;
-        }
-    });
-
-    // Loan Amount mapping and Balance auto-fill for Edit Information Modal (Secretary)
-    const secEditInfoLoanAmountInput = document.getElementById('sec_edit_info_loan_amount');
-    const secEditInfoDailyInput = document.getElementById('sec_edit_info_daily');
-
-    const secEditInfoPaymentMapping = {
-        5000: 80,
-        7000: 100,
-        8000: 120,
-        10000: 150,
-        12000: 180,
-        15000: 225,
-        20000: 300,
-        25000: 400,
-        30000: 450,
-        35000: 500,
-        40000: 600,
-        45000: 700,
-        50000: 750,
-        60000: 900,
-        70000: 1000,
-        80000: 1200,
-        90000: 1400,
-        100000: 1500
-    };
-
-    secEditInfoLoanAmountInput.addEventListener('input', function() {
-        const amount = parseInt(this.value);
-
-        if (secEditInfoPaymentMapping[amount]) {
-            secEditInfoDailyInput.value = secEditInfoPaymentMapping[amount];
-        } else if (amount > 100000) {
-            // Keep it manual
-        } else {
-            secEditInfoDailyInput.value = '';
         }
     });
 </script>

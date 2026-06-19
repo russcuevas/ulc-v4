@@ -33,7 +33,8 @@
 
                             <div class="form-group">
                                 <label>Phone 2</label>
-                                <input type="text" class="form-control" value="{{ $client->phone_number_2 }}" readonly>
+                                <input type="text" class="form-control" value="{{ $client->phone_number_2 }}"
+                                    readonly>
                             </div>
 
                             <div class="form-group">
@@ -66,31 +67,33 @@
                             <div class="form-row">
                                 <div class="form-group col-md-6">
                                     <label>Loan From *</label>
-                                    <input type="date" name="loan_from" id="renew_loan_from" class="form-control" required>
+                                    <input type="date" name="loan_from" id="renew_loan_from" class="form-control"
+                                        required>
                                 </div>
                                 <div class="form-group col-md-6">
                                     <label>Loan To *</label>
-                                    <input type="date" name="loan_to" id="renew_loan_to" class="form-control" required>
+                                    <input type="date" name="loan_to" id="renew_loan_to" class="form-control"
+                                        required>
                                 </div>
                             </div>
 
                             <div class="form-row">
                                 <div class="form-group col-md-6">
                                     <label>Loan Amount *</label>
-                                    <input type="number" name="loan_amount" id="renew_loan_amount" class="form-control" min="1"
-                                        step="0.01" required>
+                                    <input type="number" name="loan_amount" id="renew_loan_amount" class="form-control"
+                                        min="1" step="0.01" required>
                                 </div>
 
                                 <div class="form-group col-md-6">
                                     <label>Balance *</label>
-                                    <input type="number" name="balance" id="renew_balance" class="form-control" min="0"
+                                    <input type="number" name="balance" class="form-control" min="0"
                                         step="0.01" required value="0">
                                 </div>
                             </div>
 
                             <div class="form-group">
                                 <label>Daily Payment *</label>
-                                <input type="number" name="daily" id="renew_daily" class="form-control" min="0" step="0.01"
+                                <input type="number" name="daily" class="form-control" min="0" step="0.01"
                                     required>
                             </div>
 
@@ -124,50 +127,6 @@
             date.setDate(date.getDate() + 100);
             const toDate = date.toISOString().split('T')[0];
             document.getElementById('renew_loan_to').value = toDate;
-        }
-    });
-
-    // Auto calculate daily and balance
-    const renewLoanAmountInput = document.getElementById('renew_loan_amount');
-    const renewBalanceInput = document.getElementById('renew_balance');
-    const renewDailyInput = document.getElementById('renew_daily');
-
-    const renewPaymentMapping = {
-        5000: 80,
-        7000: 100,
-        8000: 120,
-        10000: 150,
-        12000: 180,
-        15000: 225,
-        20000: 300,
-        25000: 400,
-        30000: 450,
-        35000: 500,
-        40000: 600,
-        45000: 700,
-        50000: 750,
-        60000: 900,
-        70000: 1000,
-        80000: 1200,
-        90000: 1400,
-        100000: 1500
-    };
-
-    renewLoanAmountInput.addEventListener('input', function() {
-        const amount = parseInt(this.value);
-
-        if (renewPaymentMapping[amount]) {
-            renewDailyInput.value = renewPaymentMapping[amount];
-        } else if (amount > 100000) {
-            // Keep it manual
-        } else {
-            renewDailyInput.value = '';
-        }
-
-        if (!isNaN(amount)) {
-            renewBalanceInput.value = amount;
-        } else {
-            renewBalanceInput.value = '';
         }
     });
 </script>
