@@ -57,8 +57,9 @@
         th,
         td {
             border: 1px solid #000;
-            padding: 5px;
+            padding: 3px;
             text-align: center;
+            font-size: 9px;
         }
 
         th {
@@ -142,6 +143,27 @@
 
         <!-- PAYMENT TABLE -->
         @php
+            $runningPayment = 0;
+            foreach ($payments as $payment) {
+                $collectionVal = is_numeric($payment->collection) ? (float) $payment->collection : 0.0;
+                $runningPayment += $collectionVal;
+
+                $payment->total_payment = $runningPayment;
+                $payment->outstanding_balance = max(0, $loan->loan_amount - $runningPayment);
+
+                // Balance Should Be
+                $dueDate = \Carbon\Carbon::parse($payment->due_date);
+                $loanStart = \Carbon\Carbon::parse($loan->loan_from);
+                $days = $dueDate->lessThan($loanStart) ? 0 : $loanStart->diffInDays($dueDate, false) + 1;
+                $payment->balance_should_be = max(
+                    0,
+                    $loan->loan_amount - $days * ($payment->daily ?? ($loan->daily ?? 0)),
+                );
+
+                // Daily OD (Cumulative Overdue)
+                $payment->daily_od = max(0, $payment->outstanding_balance - $payment->balance_should_be);
+            }
+
             $chunks = $payments->chunk(100); // 100 per page (50 left, 50 right)
         @endphp
 
@@ -157,28 +179,33 @@
                 <table style="width: 50%;">
                     <thead>
                         <tr>
-                            <th>NO.</th>
-                            <th>DATE</th>
-                            <th>DAILY</th>
-                            <th>PAYMENT</th>
-                            <th>LAPSED</th>
+                            <th>No.</th>
+                            <th>Date</th>
+                            <th>Balance Should be</th>
+                            <th>Outstanding Balance</th>
+                            <th>Daily Payment</th>
+                            <th>Total Payment</th>
+                            <th>Daily OD</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach ($left as $index => $payment)
                             @php
                                 $dueDate = \Carbon\Carbon::parse($payment->due_date);
-                                $loanEnd = \Carbon\Carbon::parse($loan->loan_to);
-                                $isLapsed = $dueDate->gt($loanEnd) && $loan->balance > 0;
                             @endphp
                             <tr>
                                 <td>{{ $index + 1 }}</td>
-                                <td>{{ $dueDate->format('M d Y') }}</td>
-                                <td>{{ number_format($payment->daily ?? 0, 2) }}</td>
+                                <td>{{ $dueDate->format('n/d/Y') }}</td>
+                                <td>{{ number_format($payment->balance_should_be, 2) }}</td>
+                                <td>{{ number_format($payment->outstanding_balance, 2) }}</td>
+
+                                <td>{{ number_format($payment->daily, 2) }}</td>
                                 <td>
-                                    {{ is_numeric($payment->collection) ? number_format($payment->collection, 2) : '-' }}
+                                    {{ is_numeric($payment->collection) && (float) $payment->collection > 0 ? number_format($payment->collection, 2) : '' }}
                                 </td>
-                                <td>{{ $isLapsed ? 'YES' : 'NO' }}</td>
+                                <td>
+                                    {{ $payment->daily_od > 0 ? ($payment->daily_od == (int) $payment->daily_od ? number_format($payment->daily_od, 0) : number_format($payment->daily_od, 2)) : '' }}
+                                </td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -188,28 +215,32 @@
                 <table style="width: 50%;">
                     <thead>
                         <tr>
-                            <th>NO.</th>
-                            <th>DATE</th>
-                            <th>DAILY</th>
-                            <th>PAYMENT</th>
-                            <th>LAPSED</th>
+                            <th>No.</th>
+                            <th>Date</th>
+                            <th>Balance Should be</th>
+                            <th>Outstanding Balance</th>
+                            <th>Daily Payment</th>
+                            <th>Total Payment</th>
+                            <th>Daily OD</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach ($right as $index => $payment)
                             @php
                                 $dueDate = \Carbon\Carbon::parse($payment->due_date);
-                                $loanEnd = \Carbon\Carbon::parse($loan->loan_to);
-                                $isLapsed = $dueDate->gt($loanEnd) && $loan->balance > 0;
                             @endphp
                             <tr>
                                 <td>{{ $index + 51 }}</td>
-                                <td>{{ $dueDate->format('M d Y') }}</td>
-                                <td>{{ number_format($payment->daily ?? 0, 2) }}</td>
+                                <td>{{ $dueDate->format('n/d/Y') }}</td>
+                                <td>{{ number_format($payment->balance_should_be, 2) }}</td>
+                                <td>{{ number_format($payment->outstanding_balance, 2) }}</td>
                                 <td>
-                                    {{ is_numeric($payment->collection) ? number_format($payment->collection, 2) : '-' }}
+                                    {{ is_numeric($payment->collection) && (float) $payment->collection > 0 ? number_format($payment->collection, 2) : '' }}
                                 </td>
-                                <td>{{ $isLapsed ? 'YES' : 'NO' }}</td>
+                                <td>{{ number_format($payment->total_payment, 2) }}</td>
+                                <td>
+                                    {{ $payment->daily_od > 0 ? ($payment->daily_od == (int) $payment->daily_od ? number_format($payment->daily_od, 0) : number_format($payment->daily_od, 2)) : '' }}
+                                </td>
                             </tr>
                         @endforeach
                     </tbody>

@@ -133,12 +133,52 @@ class AdminCollectionController extends Controller
             $isOverdue = \Carbon\Carbon::parse($selectedDate)
                 ->gt(\Carbon\Carbon::parse($loan->loan_to));
 
+            // Calculate running/cumulative collection up to $selectedDate (inclusive)
+            $cumulativePaid = DB::table('clients_payments')
+                ->where('client_loans_id', $loan->id)
+                ->whereDate('due_date', '<=', $selectedDate)
+                ->where('is_collected', 1)
+                ->sum('collection');
+
+            $outstandingBalance = max(0, ($loan->loan_amount ?? 0) - $cumulativePaid);
+
+            // Balance Should Be
+            $dueDate = \Carbon\Carbon::parse($selectedDate);
+            $loanStart = \Carbon\Carbon::parse($loan->loan_from);
+            $days = $dueDate->lessThan($loanStart) ? 0 : ($loanStart->diffInDays($dueDate, false) + 1);
+            $balanceShouldBe = max(0, ($loan->loan_amount ?? 0) - $days * ($loan->daily ?? 0));
+
+            $overdueVal = 0;
+            $isPaid = ($loan->balance ?? 0) <= 0 || $outstandingBalance <= 0;
+            if (!$isPaid) {
+                $overdueVal = max(0, $outstandingBalance - $balanceShouldBe);
+            }
+
+            // Old balance (before today's payment)
+            $oldBalanceDisplay = $payment ? ($payment->old_balance ?? $loan->balance) : $loan->balance;
+
+            // Outstanding balance (after today's payment if collected/entered)
+            if ($payment) {
+                $colAmt = is_numeric($payment->collection) ? (float)$payment->collection : 0.0;
+                $isCollectedToday = ($payment->is_collected == 1);
+                if ($isCollectedToday) {
+                    $outstandingBalanceDisplay = $loan->balance;
+                } else {
+                    $outstandingBalanceDisplay = max(0, $loan->balance - $colAmt);
+                }
+            } else {
+                $outstandingBalanceDisplay = $loan->balance;
+            }
+
             return (object)[
                 'id' => $loan->client_id,
                 'fullname' => $loan->fullname,
                 'loan' => $loan,
                 'payment' => $payment,
-                'is_overdue' => $isOverdue
+                'is_overdue' => $isOverdue,
+                'overdueVal' => $overdueVal,
+                'oldBalanceDisplay' => $oldBalanceDisplay,
+                'outstandingBalanceDisplay' => $outstandingBalanceDisplay
             ];
         });
 
@@ -506,6 +546,8 @@ class AdminCollectionController extends Controller
                 'cl.loan_amount',
                 'cl.balance',
                 'cl.loan_to',
+                'cl.loan_from',
+                'cl.daily as cl_daily',
                 'col.fullname as collected_by_name'
             )
             ->orderBy('c.fullname')
@@ -513,6 +555,48 @@ class AdminCollectionController extends Controller
 
         if ($payments->isEmpty()) {
             abort(404, 'No payments found.');
+        }
+
+        foreach ($payments as $payment) {
+            $selectedDate = $payment->due_date;
+            
+            // Calculate running/cumulative collection up to $selectedDate (inclusive)
+            $cumulativePaid = DB::table('clients_payments')
+                ->where('client_loans_id', $payment->client_loans_id)
+                ->whereDate('due_date', '<=', $selectedDate)
+                ->where('is_collected', 1)
+                ->sum('collection');
+
+            $outstandingBalance = max(0, ($payment->loan_amount ?? 0) - $cumulativePaid);
+
+            // Balance Should Be
+            $dueDate = \Carbon\Carbon::parse($selectedDate);
+            $loanStart = \Carbon\Carbon::parse($payment->loan_from);
+            $days = $dueDate->lessThan($loanStart) ? 0 : ($loanStart->diffInDays($dueDate, false) + 1);
+            $balanceShouldBe = max(0, ($payment->loan_amount ?? 0) - $days * ($payment->cl_daily ?? 0));
+
+            $overdueVal = 0;
+            $isPaid = ($payment->balance ?? 0) <= 0 || $outstandingBalance <= 0;
+            if (!$isPaid) {
+                $overdueVal = max(0, $outstandingBalance - $balanceShouldBe);
+            }
+
+            // Old balance (before today's payment)
+            $oldBalanceDisplay = $payment->old_balance ?? $payment->balance;
+
+            // Outstanding balance (after today's payment if collected/entered)
+            $colAmt = is_numeric($payment->collection) ? (float)$payment->collection : 0.0;
+            $isCollectedToday = ($payment->is_collected == 1);
+            if ($isCollectedToday) {
+                $outstandingBalanceDisplay = $payment->balance;
+            } else {
+                $outstandingBalanceDisplay = max(0, $payment->balance - $colAmt);
+            }
+
+            $payment->balanceShouldBe = $balanceShouldBe;
+            $payment->overdueVal = $overdueVal;
+            $payment->oldBalanceDisplay = $oldBalanceDisplay;
+            $payment->outstandingBalanceDisplay = $outstandingBalanceDisplay;
         }
 
         return view('admin.areas.print.print_collection', [

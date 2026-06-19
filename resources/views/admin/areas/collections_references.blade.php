@@ -164,7 +164,7 @@
                                     @foreach ($references as $ref)
                                         <tr>
                                             <td>{{ $ref->reference_number }}</td>
-                                            <td>{{ \Carbon\Carbon::parse($ref->due_date)->format('F j, Y') }}</td>
+                                            <td data-order="{{ $ref->due_date }}">{{ \Carbon\Carbon::parse($ref->due_date)->format('F j, Y') }}</td>
                                             <td>{{ $ref->collected_by_name ?? 'N/A' }}</td>
                                             <td>{{ $ref->total_clients }}</td>
                                             <td>₱{{ number_format($ref->total_daily_collectibles ?? 0, 2) }}</td>
@@ -256,7 +256,8 @@
                 "paging": false,
                 "searching": true,
                 "ordering": true,
-                "responsive": true
+                "responsive": true,
+                "order": [[1, "desc"]]
             });
 
             // Lazy loading variables

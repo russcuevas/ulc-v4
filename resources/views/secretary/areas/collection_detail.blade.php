@@ -140,10 +140,9 @@
                                 <h3 class="card-title">Collection</h3>
 
 
-                                <a href="{{ route('secretary.collections.print', $refNo) }}" target="_blank"
-                                    class="btn btn-info btn-sm px-3">
+                                <button type="button" id="printBtn" class="btn btn-info btn-sm px-3">
                                     <i class="fas fa-print"></i> Print
-                                </a>
+                                </button>
 
                             </div>
                         </div>
@@ -266,7 +265,9 @@
                                         <th>Client Name</th>
                                         <th>Due Date</th>
                                         <th>Balance Should be</th>
-                                        <th>Balance</th>
+                                        <th>Overdue</th>
+                                        <th>Old Balance</th>
+                                        <th>Outstanding Balance</th>
                                         <th>Daily</th>
                                         <th>Collection</th>
                                         <th>Type</th>
@@ -305,18 +306,21 @@
 
                                             {{-- Balance Should be --}}
                                             @php
-                                                $days = $loanStart->diffInDays($today, false);
-                                                if ($days < 0) {
-                                                    $days = 0;
-                                                }
+                                                $days = $today->lessThan($loanStart) ? 0 : ($loanStart->diffInDays($today, false) + 1);
                                                 $loanAmount = $client->loan->loan_amount ?? 0;
                                                 $daily = $client->loan->daily ?? 0;
                                                 $balanceShouldBe = max(0, $loanAmount - $days * $daily);
                                             @endphp
                                             <td>₱{{ number_format($balanceShouldBe, 2) }}</td>
 
-                                            {{-- Balance --}}
-                                            <td>₱{{ number_format($balance, 2) }}</td>
+                                            {{-- Overdue --}}
+                                            <td>₱{{ number_format($client->overdueVal ?? 0, 2) }}</td>
+
+                                            {{-- Old Balance --}}
+                                            <td>₱{{ number_format($client->oldBalanceDisplay ?? 0, 2) }}</td>
+
+                                            {{-- Outstanding Balance --}}
+                                            <td>₱{{ number_format($client->outstandingBalanceDisplay ?? 0, 2) }}</td>
 
                                             {{-- Daily --}}
                                             <td>
@@ -406,9 +410,12 @@
                                 </tbody>
                                 <tfoot>
                                     <tr>
-                                        <th colspan="3"
+                                        <th colspan="4"
                                             style="text-align: right; vertical-align: middle; font-weight: bold; font-size: 1.1rem;">
                                             Total:</th>
+                                        <th>
+                                            <span id="totalOldBalanceSummary">₱0.00</span>
+                                        </th>
                                         <th>
                                             <span id="totalBalanceSummary">₱0.00</span>
                                         </th>
@@ -550,6 +557,7 @@
                     };
 
                     // Sum columns directly from the DOM visible rows
+                    var oldBalanceTotal = 0;
                     var balanceTotal = 0;
                     var dailyTotal = 0;
                     var collectionTotal = 0;
@@ -559,15 +567,20 @@
                         if ($(this).css('display') !== 'none' || $(this).hasClass(
                                 'lazy-hidden')) {
                             var cells = $(this).find('td');
-                            if (cells.length >= 6) {
-                                balanceTotal += intVal($(cells[3]).html());
-                                dailyTotal += intVal($(cells[4]).html());
-                                collectionTotal += intVal($(cells[5]).html());
+                            if (cells.length >= 8) {
+                                oldBalanceTotal += intVal($(cells[4]).html());
+                                balanceTotal += intVal($(cells[5]).html());
+                                dailyTotal += intVal($(cells[6]).html());
+                                collectionTotal += intVal($(cells[7]).html());
                             }
                         }
                     });
 
                     // Update summary card values
+                    $('#totalOldBalanceSummary').html('₱' + oldBalanceTotal.toLocaleString('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    }));
                     $('#totalBalanceSummary').html('₱' + balanceTotal.toLocaleString('en-US', {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2
@@ -834,6 +847,30 @@
                                     'error');
                             }
                         });
+                    }
+                });
+            });
+
+            $('#printBtn').on('click', function(e) {
+                e.preventDefault();
+                Swal.fire({
+                    title: 'Print Collection',
+                    text: 'Select which collection report you want to print:',
+                    icon: 'question',
+                    showCancelButton: true,
+                    showDenyButton: true,
+                    confirmButtonText: 'Print Normal Collection',
+                    denyButtonText: 'Print Lapsed Collection',
+                    cancelButtonText: 'Cancel',
+                    confirmButtonColor: '#28a745',
+                    denyButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d'
+                }).then((result) => {
+                    let baseUrl = "{{ route('secretary.collections.print', $refNo) }}";
+                    if (result.isConfirmed) {
+                        window.open(baseUrl + '?type=normal', '_blank');
+                    } else if (result.isDenied) {
+                        window.open(baseUrl + '?type=lapsed', '_blank');
                     }
                 });
             });

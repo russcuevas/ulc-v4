@@ -87,6 +87,28 @@
 <body>
 
     @php
+        $firstPayment = $payments->first();
+        $printType = request()->query('type');
+        if ($printType === 'normal') {
+            $payments = $payments->filter(function($p) {
+                $balance = $p->balance ?? 0;
+                $hasBalance = $balance > 0;
+                $today = \Carbon\Carbon::parse($p->due_date);
+                $loanEnd = \Carbon\Carbon::parse($p->loan_to);
+                $isLapsed = $hasBalance && $today->greaterThan($loanEnd);
+                return !$isLapsed;
+            });
+        } elseif ($printType === 'lapsed') {
+            $payments = $payments->filter(function($p) {
+                $balance = $p->balance ?? 0;
+                $hasBalance = $balance > 0;
+                $today = \Carbon\Carbon::parse($p->due_date);
+                $loanEnd = \Carbon\Carbon::parse($p->loan_to);
+                $isLapsed = $hasBalance && $today->greaterThan($loanEnd);
+                return $isLapsed;
+            });
+        }
+
         $totalCollectibles = $payments->sum('daily');
         $totalCollected = $payments->sum(fn($p) => is_numeric($p->collection) ? $p->collection : 0);
         $clientsPaid = $payments->filter(fn($p) => $p->collection > 0 && $p->type != 'NO PAYMENT')->count();
@@ -112,8 +134,8 @@
         <h2>ULTRARITZ LENDING CORPORATION</h2>
         <h4>QUEZON CITY</h4>
 
-        <p><strong>Collection Summary</strong></p>
-        <p>{{ \Carbon\Carbon::parse($payments->first()->due_date)->format('F j, Y') }}</p>
+        <p><strong>Collection Summary - {{ $printType === 'normal' ? 'Normal Collection' : ($printType === 'lapsed' ? 'Lapsed Collection' : 'All Collection') }}</strong></p>
+        <p>{{ $firstPayment?->due_date ? \Carbon\Carbon::parse($firstPayment->due_date)->format('F j, Y') : '' }}</p>
 
         <p>
             {{ $area->location_name }} [{{ $area->areas_name }}]
@@ -128,7 +150,7 @@
         <tbody>
             <tr class="table-primary">
                 <td><strong>Collected By</strong></td>
-                <td>{{ $payments->first()->collected_by_name ?? 'N/A' }}</td>
+                <td>{{ $firstPayment?->collected_by_name ?? 'N/A' }}</td>
                 <td class="text-end"><strong>Total Collectibles</strong></td>
                 <td class="text-end">₱{{ number_format($totalCollectibles, 2) }}</td>
             </tr>
@@ -156,42 +178,31 @@
     <table class="table-data">
         <thead>
             <tr>
-                <th>Client</th>
-                <th>Loan</th>
-                <th>Old Bal</th>
-                <th>Bal</th>
+                <th>Client Name</th>
+                <th>Due Date</th>
+                <th>Balance Should be</th>
+                <th>Overdue</th>
+                <th>Old Balance</th>
+                <th>Outstanding Balance</th>
                 <th>Daily</th>
                 <th>Collection</th>
                 <th>Type</th>
-                <th>Lapsed</th>
             </tr>
         </thead>
         <tbody>
             @foreach ($payments as $payment)
-                @php
-                    $balance = $payment->balance ?? 0;
-                    $hasBalance = $balance > 0;
-                    $today = \Carbon\Carbon::parse($payment->due_date);
-                    $loanEnd = \Carbon\Carbon::parse($payment->loan_to);
-                    $isLapsed = $hasBalance && $today->greaterThan($loanEnd);
-                @endphp
                 <tr>
                     <td>{{ $payment->fullname }}</td>
-                    <td>₱{{ number_format($payment->loan_amount, 2) }}</td>
-                    <td>₱{{ number_format($payment->old_balance, 2) }}</td>
-                    <td>₱{{ number_format($payment->balance, 2) }}</td>
-                    <td>₱{{ number_format($payment->daily, 2) }}</td>
+                    <td>{{ \Carbon\Carbon::parse($payment->due_date)->format('Y-m-d') }}</td>
+                    <td>₱{{ number_format($payment->balanceShouldBe ?? 0, 2) }}</td>
+                    <td>₱{{ number_format($payment->overdueVal ?? 0, 2) }}</td>
+                    <td>₱{{ number_format($payment->oldBalanceDisplay ?? 0, 2) }}</td>
+                    <td>₱{{ number_format($payment->outstandingBalanceDisplay ?? 0, 2) }}</td>
+                    <td>₱{{ number_format($payment->daily ?? 0, 2) }}</td>
                     <td>
                         {{ is_numeric($payment->collection) ? '₱' . number_format($payment->collection, 2) : '-' }}
                     </td>
                     <td>{{ $payment->type ?? '-' }}</td>
-                    <td class="text-center @if ($isLapsed) bg-yellow-print @endif">
-                        @if ($isLapsed)
-                            <span class="text-danger-print">YES</span>
-                        @else
-                            NO
-                        @endif
-                    </td>
                 </tr>
             @endforeach
         </tbody>
