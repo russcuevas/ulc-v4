@@ -258,11 +258,14 @@
                             </div>
                             <input type="hidden" id="currentFilter" value="all">
 
+
+
                             <table id="referencesTable" class="table table-bordered table-hover">
                                 <thead>
                                     <tr>
                                         <th>Client Name</th>
                                         <th>Due Date</th>
+                                        <th>Balance Should be</th>
                                         <th>Balance</th>
                                         <th>Daily</th>
                                         <th>Collection</th>
@@ -299,6 +302,18 @@
                                                     {{ $selectedDate }}
                                                 @endif
                                             </td>
+
+                                            {{-- Balance Should be --}}
+                                            @php
+                                                $days = $loanStart->diffInDays($today, false);
+                                                if ($days < 0) {
+                                                    $days = 0;
+                                                }
+                                                $loanAmount = $client->loan->loan_amount ?? 0;
+                                                $daily = $client->loan->daily ?? 0;
+                                                $balanceShouldBe = max(0, $loanAmount - $days * $daily);
+                                            @endphp
+                                            <td>₱{{ number_format($balanceShouldBe, 2) }}</td>
 
                                             {{-- Balance --}}
                                             <td>₱{{ number_format($balance, 2) }}</td>
@@ -391,12 +406,19 @@
                                 </tbody>
                                 <tfoot>
                                     <tr>
-                                        <th colspan="2" style="text-align: right;">Total:</th>
-                                        <th>₱0.00</th>
-                                        <th>₱0.00</th>
-                                        <th>₱0.00</th>
-                                        <th></th>
-                                        <th></th>
+                                        <th colspan="3"
+                                            style="text-align: right; vertical-align: middle; font-weight: bold; font-size: 1.1rem;">
+                                            Total:</th>
+                                        <th>
+                                            <span id="totalBalanceSummary">₱0.00</span>
+                                        </th>
+                                        <th>
+                                            <span id="totalDailySummary">₱0.00</span>
+                                        </th>
+                                        <th>
+                                            <span id="totalCollectionSummary">₱0.00</span>
+                                        </th>
+                                        <th colspan="2"></th>
                                     </tr>
                                 </tfoot>
                             </table>
@@ -507,66 +529,54 @@
         });
     </script>
     <script>
-                   var table = $('#referencesTable').DataTable({
+        $(document).ready(function() {
+            var table = $('#referencesTable').DataTable({
                 "paging": false,
                 "searching": true,
                 "ordering": true,
                 "responsive": true,
-                "footerCallback": function(row, data, start, end, display) {
+                "drawCallback": function(settings) {
                     var api = this.api();
 
                     // Remove formatting to sum numerical values
                     var intVal = function(i) {
                         if (typeof i === 'number') return i;
                         if (typeof i === 'string') {
-                            var clean = i.split('<')[0].replace(/[\₱,]/g, '').trim();
-                            if (clean === '-' || clean === '') return 0;
+                            var clean = i.replace(/<[^>]*>/g, '').replace(/[^\d.-]/g, '');
                             var val = parseFloat(clean);
                             return isNaN(val) ? 0 : val;
                         }
                         return 0;
                     };
 
-                    // Total balance over filtered/visible rows
-                    var balanceTotal = api
-                        .column(2, {
-                            search: 'applied'
-                        })
-                        .data()
-                        .reduce(function(a, b) {
-                            return intVal(a) + intVal(b);
-                        }, 0);
+                    // Sum columns directly from the DOM visible rows
+                    var balanceTotal = 0;
+                    var dailyTotal = 0;
+                    var collectionTotal = 0;
 
-                    // Total daily over filtered/visible rows
-                    var dailyTotal = api
-                        .column(3, {
-                            search: 'applied'
-                        })
-                        .data()
-                        .reduce(function(a, b) {
-                            return intVal(a) + intVal(b);
-                        }, 0);
+                    $('#referencesTable tbody tr').each(function() {
+                        // Check if it's not hidden by search filter (search filter hides rows completely, but lazy-hidden is just for pagination)
+                        if ($(this).css('display') !== 'none' || $(this).hasClass(
+                                'lazy-hidden')) {
+                            var cells = $(this).find('td');
+                            if (cells.length >= 6) {
+                                balanceTotal += intVal($(cells[3]).html());
+                                dailyTotal += intVal($(cells[4]).html());
+                                collectionTotal += intVal($(cells[5]).html());
+                            }
+                        }
+                    });
 
-                    // Total collection over filtered/visible rows
-                    var collectionTotal = api
-                        .column(4, {
-                            search: 'applied'
-                        })
-                        .data()
-                        .reduce(function(a, b) {
-                            return intVal(a) + intVal(b);
-                        }, 0);
-
-                    // Update footer cells
-                    $(api.column(2).footer()).html('₱' + balanceTotal.toLocaleString('en-US', {
+                    // Update summary card values
+                    $('#totalBalanceSummary').html('₱' + balanceTotal.toLocaleString('en-US', {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2
                     }));
-                    $(api.column(3).footer()).html('₱' + dailyTotal.toLocaleString('en-US', {
+                    $('#totalDailySummary').html('₱' + dailyTotal.toLocaleString('en-US', {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2
                     }));
-                    $(api.column(4).footer()).html('₱' + collectionTotal.toLocaleString('en-US', {
+                    $('#totalCollectionSummary').html('₱' + collectionTotal.toLocaleString('en-US', {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2
                     }));
@@ -578,7 +588,8 @@
             var isLoadPending = false;
             var loaderId = 'referencesTable_lazyLoader';
 
-            var loaderHtml = '<div id="' + loaderId + '" class="text-center py-3 lazy-loader-indicator" style="display: none;">' +
+            var loaderHtml = '<div id="' + loaderId +
+                '" class="text-center py-3 lazy-loader-indicator" style="display: none;">' +
                 '<div class="spinner-border text-primary" role="status" style="color: #FF5F00 !important;">' +
                 '<span class="sr-only">Loading...</span>' +
                 '</div>' +
@@ -586,7 +597,8 @@
             $('#referencesTable').after(loaderHtml);
 
             if ($('#lazy-hidden-style').length === 0) {
-                $('head').append('<style id="lazy-hidden-style">.lazy-hidden { display: none !important; }</style>');
+                $('head').append(
+                    '<style id="lazy-hidden-style">.lazy-hidden { display: none !important; }</style>');
             }
 
             function applyLazyLoading() {
