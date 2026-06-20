@@ -859,6 +859,16 @@ class AdminCollectionController extends Controller
         $startDate = \Carbon\Carbon::parse($dateInput)->startOfDay();
         $endDate = $startDate->copy()->addDays(4)->endOfDay();
 
+        // Check if weekly collection already exists in log
+        $exists = DB::table('weekly_collections_log')
+            ->where('location_name', $location)
+            ->whereDate('start_date', $startDate->format('Y-m-d'))
+            ->exists();
+
+        if ($exists) {
+            return response()->json(['message' => 'Weekly payment for this period has already been collected.'], 400);
+        }
+
         // Get all areas in this location
         $allMatchedAreas = DB::table('areas')
             ->where('location_name', $location)
@@ -1028,8 +1038,36 @@ class AdminCollectionController extends Controller
             }
         }
 
+        // Log to weekly_collections_log
+        $formattedRange = "FROM " . $startDate->format('F j, Y') . " TO " . $endDate->format('F j, Y');
+        DB::table('weekly_collections_log')->insert([
+            'location_name' => $location,
+            'date_collected' => $formattedRange,
+            'start_date' => $startDate->format('Y-m-d'),
+            'is_sent' => true,
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
+
         return response()->json([
             'message' => 'Weekly payment collected successfully and breakdown SMS sent to clients.'
         ]);
+    }
+
+    public function AdminWeeklyCheckCollection(Request $request, $location)
+    {
+        $date = $request->query('date');
+        if (!$date) {
+            return response()->json(['exists' => false]);
+        }
+
+        $startDate = \Carbon\Carbon::parse($date)->startOfDay()->format('Y-m-d');
+
+        $exists = DB::table('weekly_collections_log')
+            ->where('location_name', $location)
+            ->whereDate('start_date', $startDate)
+            ->exists();
+
+        return response()->json(['exists' => $exists]);
     }
 }

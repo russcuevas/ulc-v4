@@ -275,7 +275,27 @@
                         $('#dateRangeDisplay').html(
                             `FROM <strong class="text-orange">${startStr}</strong> TO <strong class="text-orange">${endStr}</strong>`
                         );
-                        $('#sendWeeklyBtn').prop('disabled', false);
+                        $('#sendWeeklyBtn').prop('disabled', true);
+
+                        $.ajax({
+                            url: "{{ route('secretary.areas.collections.weekly_check', ['location' => $location_name]) }}",
+                            method: "GET",
+                            data: { date: dateStr },
+                            success: function(response) {
+                                if (response.exists) {
+                                    $('#dateRangeDisplay').html(
+                                        `FROM <strong class="text-orange">${startStr}</strong> TO <strong class="text-orange">${endStr}</strong><br>` +
+                                        `<span class="text-danger font-weight-bold"><i class="fas fa-exclamation-triangle mr-1"></i> ALREADY COLLECTED FOR THIS PERIOD</span>`
+                                    );
+                                    $('#sendWeeklyBtn').prop('disabled', true);
+                                } else {
+                                    $('#sendWeeklyBtn').prop('disabled', false);
+                                }
+                            },
+                            error: function() {
+                                $('#sendWeeklyBtn').prop('disabled', false);
+                            }
+                        });
                     } else {
                         $('#dateRangeDisplay').html('FROM ... TO ...');
                         $('#sendWeeklyBtn').prop('disabled', true);
