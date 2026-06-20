@@ -1,3 +1,21 @@
+@php
+    $todayOfWeek = now()->dayOfWeek; // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    $allowedDay = null;
+    $allowedDayName = '';
+
+    if (stripos($location_name, 'Financial Counselor') !== false) {
+        $allowedDay = 6; // Saturday
+        $allowedDayName = 'Saturday';
+    } elseif (stripos($location_name, 'Caloocan') !== false) {
+        $allowedDay = 1; // Monday
+        $allowedDayName = 'Monday';
+    } elseif (stripos($location_name, 'Manila') !== false) {
+        $allowedDay = 2; // Tuesday
+        $allowedDayName = 'Tuesday';
+    }
+
+    $isAllowedToday = ($allowedDay === null || $todayOfWeek === $allowedDay);
+@endphp
 <!DOCTYPE html>
 <html lang="en">
 
@@ -161,6 +179,14 @@
                         </div>
 
                         <div class="card-body">
+                            @if(!$isAllowedToday)
+                                <div class="alert alert-warning border-0 shadow-sm mb-4">
+                                    <h5 class="font-weight-bold mb-1"><i class="fas fa-exclamation-triangle mr-2"></i> Action Restricted</h5>
+                                    Weekly collection for <strong>{{ $location_name }}</strong> is scheduled only on <strong>{{ $allowedDayName }}s</strong> (12:00 AM to 11:59 PM). 
+                                    You cannot collect payments today.
+                                </div>
+                            @endif
+
                             <!-- Date Selector Controls -->
                             <div class="row align-items-end g-3 mb-4">
                                 <div class="col-md-4">
@@ -171,7 +197,7 @@
                                                 <span class="input-group-text"><i class="fas fa-calendar"></i></span>
                                             </div>
                                             <input type="text" id="weeklyDate" class="form-control bg-white"
-                                                placeholder="Select start date" readonly>
+                                                placeholder="Select start date" readonly {{ !$isAllowedToday ? 'disabled' : '' }}>
                                         </div>
                                     </div>
                                 </div>
@@ -244,7 +270,12 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script>
         $(document).ready(function() {
-            flatpickr("#weeklyDate", {
+            @if(!$isAllowedToday)
+                // Schedule restriction: do not initialize flatpickr
+                $('#weeklyDate').prop('disabled', true);
+                $('#sendWeeklyBtn').prop('disabled', true);
+            @else
+                flatpickr("#weeklyDate", {
                 disable: [
                     function(date) {
                         // Disable all days except Mondays (1)
@@ -299,6 +330,7 @@
                     }
                 }
             });
+            @endif
 
             $('#sendWeeklyBtn').on('click', function() {
                 let dateVal = $('#weeklyDate').val();

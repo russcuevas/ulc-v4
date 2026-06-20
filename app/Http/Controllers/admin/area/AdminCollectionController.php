@@ -856,6 +856,28 @@ class AdminCollectionController extends Controller
             return response()->json(['message' => 'Please select a starting date.'], 400);
         }
 
+        // Enforce collection schedule
+        $todayOfWeek = now()->dayOfWeek; // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+        $allowedDay = null;
+        $allowedDayName = '';
+
+        if (stripos($location, 'Financial Counselor') !== false) {
+            $allowedDay = 6; // Saturday
+            $allowedDayName = 'Saturday';
+        } elseif (stripos($location, 'Caloocan') !== false) {
+            $allowedDay = 1; // Monday
+            $allowedDayName = 'Monday';
+        } elseif (stripos($location, 'Manila') !== false) {
+            $allowedDay = 2; // Tuesday
+            $allowedDayName = 'Tuesday';
+        }
+
+        if ($allowedDay !== null && $todayOfWeek !== $allowedDay) {
+            return response()->json([
+                'message' => "Weekly collection for {$location} is only allowed on {$allowedDayName}s."
+            ], 400);
+        }
+
         $startDate = \Carbon\Carbon::parse($dateInput)->startOfDay();
         $endDate = $startDate->copy()->addDays(4)->endOfDay();
 
