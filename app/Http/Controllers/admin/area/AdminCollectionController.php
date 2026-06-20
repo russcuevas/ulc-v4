@@ -842,9 +842,15 @@ class AdminCollectionController extends Controller
             ];
         })->values();
 
+        $collectionLogs = DB::table('weekly_collections_log')
+            ->where('location_name', $location)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
         return view('admin.areas.manila.weekly_collection', [
             'location_name' => $location,
-            'locationAreas' => $locationAreas
+            'locationAreas' => $locationAreas,
+            'collectionLogs' => $collectionLogs
         ]);
     }
 

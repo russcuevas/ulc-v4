@@ -155,9 +155,15 @@ class SecretaryCollectionController extends Controller
             ];
         })->values();
 
+        $collectionLogs = DB::table('weekly_collections_log')
+            ->where('location_name', $location)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
         return view('secretary.areas.weekly_collection', [
             'location_name' => $location,
-            'secretaryAreas' => $secretaryAreas
+            'secretaryAreas' => $secretaryAreas,
+            'collectionLogs' => $collectionLogs
         ]);
     }
 

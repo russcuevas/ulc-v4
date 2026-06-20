@@ -14,7 +14,7 @@
         $allowedDayName = 'Tuesday';
     }
 
-    $isAllowedToday = ($allowedDay === null || $todayOfWeek === $allowedDay);
+    $isAllowedToday = $allowedDay === null || $todayOfWeek === $allowedDay;
 @endphp
 <!DOCTYPE html>
 <html lang="en">
@@ -184,10 +184,12 @@
                         </div>
 
                         <div class="card-body">
-                            @if(!$isAllowedToday)
+                            @if (!$isAllowedToday)
                                 <div class="alert alert-warning border-0 shadow-sm mb-4">
-                                    <h5 class="font-weight-bold mb-1"><i class="fas fa-exclamation-triangle mr-2"></i> Action Restricted</h5>
-                                    Weekly collection for <strong>{{ $location_name }}</strong> is scheduled only on <strong>{{ $allowedDayName }}s</strong> (12:00 AM to 11:59 PM). 
+                                    <h5 class="font-weight-bold mb-1"><i class="fas fa-exclamation-triangle mr-2"></i>
+                                        Action Restricted</h5>
+                                    Weekly collection for <strong>{{ $location_name }}</strong> is scheduled only on
+                                    <strong>{{ $allowedDayName }}s</strong> (12:00 AM to 11:59 PM).
                                     You cannot collect payments today.
                                 </div>
                             @endif
@@ -202,7 +204,8 @@
                                                 <span class="input-group-text"><i class="fas fa-calendar"></i></span>
                                             </div>
                                             <input type="text" id="weeklyDate" class="form-control bg-white"
-                                                placeholder="Select start date" readonly {{ !$isAllowedToday ? 'disabled' : '' }}>
+                                                placeholder="Select start date" readonly
+                                                {{ !$isAllowedToday ? 'disabled' : '' }}>
                                         </div>
                                     </div>
                                 </div>
@@ -256,6 +259,44 @@
                                 </table>
                             </div>
 
+                            <!-- Collection Logs History -->
+                            <hr class="my-4">
+                            <h5 class="mb-3 font-weight-bold text-dark mt-4">
+                                <i class="fas fa-history text-orange mr-1"></i> Weekly Collection Logs History
+                            </h5>
+                            <div class="table-responsive">
+                                <table id="logsTable" class="table table-bordered table-hover">
+                                    <thead class="bg-light">
+                                        <tr>
+                                            <th>Already Collected</th>
+                                            <th>Date Processed</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @forelse ($collectionLogs as $log)
+                                            <tr>
+                                                <td class="font-weight-500 text-orange">{{ $log->date_collected }}</td>
+                                                <td>{{ \Carbon\Carbon::parse($log->created_at)->format('F d, Y h:i A') }}
+                                                </td>
+                                                <td>
+                                                    <span class="badge badge-success px-2 py-1"><i
+                                                            class="fas fa-check-circle mr-1"></i> Collected &
+                                                        Sent</span>
+                                                </td>
+                                            </tr>
+                                        @empty
+                                            <tr>
+                                                <td colspan="3" class="text-center text-muted py-4">
+                                                    <i class="fas fa-history fa-2x mb-2 text-gray"></i><br>
+                                                    No collection logs found for this location.
+                                                </td>
+                                            </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
+
                         </div>
                     </div>
 
@@ -273,66 +314,68 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script>
         $(document).ready(function() {
-            @if(!$isAllowedToday)
+            @if (!$isAllowedToday)
                 // Schedule restriction: do not initialize flatpickr
                 $('#weeklyDate').prop('disabled', true);
                 $('#sendWeeklyBtn').prop('disabled', true);
             @else
                 flatpickr("#weeklyDate", {
-                disable: [
-                    function(date) {
-                        // Disable all days except Mondays (1)
-                        return date.getDay() !== 1;
-                    }
-                ],
-                locale: {
-                    firstDayOfWeek: 1 // Start week on Monday
-                },
-                dateFormat: "Y-m-d",
-                onChange: function(selectedDates, dateStr, instance) {
-                    if (dateStr) {
-                        let startDate = selectedDates[0];
-                        let endDate = new Date(startDate);
-                        endDate.setDate(startDate.getDate() + 4);
+                    disable: [
+                        function(date) {
+                            // Disable all days except Mondays (1)
+                            return date.getDay() !== 1;
+                        }
+                    ],
+                    locale: {
+                        firstDayOfWeek: 1 // Start week on Monday
+                    },
+                    dateFormat: "Y-m-d",
+                    onChange: function(selectedDates, dateStr, instance) {
+                        if (dateStr) {
+                            let startDate = selectedDates[0];
+                            let endDate = new Date(startDate);
+                            endDate.setDate(startDate.getDate() + 4);
 
-                        const options = {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                        };
-                        let startStr = startDate.toLocaleDateString('en-US', options);
-                        let endStr = endDate.toLocaleDateString('en-US', options);
+                            const options = {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                            };
+                            let startStr = startDate.toLocaleDateString('en-US', options);
+                            let endStr = endDate.toLocaleDateString('en-US', options);
 
-                        $('#dateRangeDisplay').html(
-                            `FROM <strong class="text-orange">${startStr}</strong> TO <strong class="text-orange">${endStr}</strong>`
-                        );
-                        $('#sendWeeklyBtn').prop('disabled', true);
+                            $('#dateRangeDisplay').html(
+                                `FROM <strong class="text-orange">${startStr}</strong> TO <strong class="text-orange">${endStr}</strong>`
+                            );
+                            $('#sendWeeklyBtn').prop('disabled', true);
 
-                        $.ajax({
-                            url: "{{ route('secretary.areas.collections.weekly_check', ['location' => $location_name]) }}",
-                            method: "GET",
-                            data: { date: dateStr },
-                            success: function(response) {
-                                if (response.exists) {
-                                    $('#dateRangeDisplay').html(
-                                        `FROM <strong class="text-orange">${startStr}</strong> TO <strong class="text-orange">${endStr}</strong><br>` +
-                                        `<span class="text-danger font-weight-bold"><i class="fas fa-exclamation-triangle mr-1"></i> ALREADY COLLECTED FOR THIS PERIOD</span>`
-                                    );
-                                    $('#sendWeeklyBtn').prop('disabled', true);
-                                } else {
+                            $.ajax({
+                                url: "{{ route('secretary.areas.collections.weekly_check', ['location' => $location_name]) }}",
+                                method: "GET",
+                                data: {
+                                    date: dateStr
+                                },
+                                success: function(response) {
+                                    if (response.exists) {
+                                        $('#dateRangeDisplay').html(
+                                            `FROM <strong class="text-orange">${startStr}</strong> TO <strong class="text-orange">${endStr}</strong><br>` +
+                                            `<span class="text-danger font-weight-bold"><i class="fas fa-exclamation-triangle mr-1"></i> ALREADY COLLECTED FOR THIS PERIOD</span>`
+                                        );
+                                        $('#sendWeeklyBtn').prop('disabled', true);
+                                    } else {
+                                        $('#sendWeeklyBtn').prop('disabled', false);
+                                    }
+                                },
+                                error: function() {
                                     $('#sendWeeklyBtn').prop('disabled', false);
                                 }
-                            },
-                            error: function() {
-                                $('#sendWeeklyBtn').prop('disabled', false);
-                            }
-                        });
-                    } else {
-                        $('#dateRangeDisplay').html('FROM ... TO ...');
-                        $('#sendWeeklyBtn').prop('disabled', true);
+                            });
+                        } else {
+                            $('#dateRangeDisplay').html('FROM ... TO ...');
+                            $('#sendWeeklyBtn').prop('disabled', true);
+                        }
                     }
-                }
-            });
+                });
             @endif
 
             $('#sendWeeklyBtn').on('click', function() {
