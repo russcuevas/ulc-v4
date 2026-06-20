@@ -221,13 +221,7 @@ class AdminCollectionController extends Controller
         $selectedDate = $reference->due_date;
         $areaId = $reference->client_area;
 
-        if ($action === 'reminder') {
-            $today = \Carbon\Carbon::today();
-            $dueDate = \Carbon\Carbon::parse($selectedDate)->startOfDay();
-            if ($dueDate->lt($today)) {
-                return response()->json(['message' => 'Reminders sent to all clients without payment.']);
-            }
-        }
+
 
         $area = DB::table('areas')->where('id', $areaId)->first();
         $matchedAreaIds = DB::table('areas')
@@ -265,8 +259,6 @@ class AdminCollectionController extends Controller
 
         $user = Session::get('user');
 
-        $messagesToSend = [];
-
         foreach ($loans as $loan) {
             $payment = $payments[$loan->id] ?? null;
 
@@ -293,26 +285,6 @@ class AdminCollectionController extends Controller
                             'created_at' => now(),
                             'updated_at' => now()
                         ]);
-                        // send SMS to client notifying NO PAYMENT
-                        try {
-                            $client = DB::table('clients')->where('id', $loan->client_id)->first();
-                            $phone_number = $client->phone ?? null;
-                            $clientName = $client->fullname ?? 'Kliyente';
-
-                            $dueFormatted = \Carbon\Carbon::parse($selectedDate)->format('F d, Y');
-                            $remaining = number_format($loan->balance ?? 0, 2);
-
-                            $message = "{$clientName}, Wala po kaming natanggap ng bayad ngayong araw {$dueFormatted} bayad kay {$collectorName}, Ang iyong natitirang balanse ay ₱{$remaining} Maraming salamat!\n- Financing Corporation";
-
-                            if ($phone_number) {
-                                $messagesToSend[] = [
-                                    'number' => $phone_number,
-                                    'message' => strip_tags(str_replace("<br>", "\n", $message))
-                                ];
-                            }
-                        } catch (\Exception $e) {
-                            // Fail silently
-                        }
                     } else {
                         if ($payment->type === 'NO PAYMENT' || (($payment->collection === null || $payment->collection == 0) && $payment->type !== 'NO PAYMENT')) {
                             DB::table('clients_payments')
@@ -324,83 +296,13 @@ class AdminCollectionController extends Controller
                                     'is_collected' => 1,
                                     'updated_at' => now()
                                 ]);
-                            // send SMS to client notifying NO PAYMENT after update
-                            try {
-                                $client = DB::table('clients')->where('id', $loan->client_id)->first();
-                                $phone_number = $client->phone ?? null;
-                                $clientName = $client->fullname ?? 'Kliyente';
-
-                                $dueFormatted = \Carbon\Carbon::parse($selectedDate)->format('F d, Y');
-                                $remaining = number_format($loan->balance ?? 0, 2);
-
-                                $message = "{$clientName}, Wala po kaming natanggap ng bayad ngayong araw {$dueFormatted} bayad kay {$collectorName}, Ang iyong natitirang balanse ay ₱{$remaining} Maraming salamat!\n- Financing Corporation";
-
-                                if ($phone_number) {
-                                    $messagesToSend[] = [
-                                        'number' => $phone_number,
-                                        'message' => strip_tags(str_replace("<br>", "\n", $message))
-                                    ];
-                                }
-                            } catch (\Exception $e) {
-                                // Fail silently
-                            }
                         }
                     }
                 }
             }
 
 
-            // REMINDER: add missing payment records (with null collection/type) and send SMS reminder
-            if ($action === 'reminder') {
-                if (\Carbon\Carbon::parse($loan->loan_from)->lte($selectedDate)) {
-                    if (!$payment) {
-                        DB::table('clients_payments')->insert([
-                            'reference_number' => (string) $refNo,
-                            'client_id' => $loan->client_id,
-                            'client_loans_id' => $loan->id,
-                            'client_area' => $areaId,
-                            'collection' => null,
-                            'type' => null,
-                            'is_lapsed' => $isLapsed,
-                            'is_collected' => 0,
-                            'due_date' => $selectedDate,
-                            'daily' => $loan->daily ?? 0,
-                            'old_balance' => $loan->balance ?? 0,
-                            'created_by' => $user->id ?? null,
-                            'collected_by' => $collector,
-                            'created_at' => now(),
-                            'updated_at' => now()
-                        ]);
 
-                        // send SMS reminder to client
-                        /*
-                        try {
-                            $client = DB::table('clients')->where('id', $loan->client_id)->first();
-                            $phone_number = $client->phone ?? null;
-                            $clientName = $client->fullname ?? 'Kliyente';
-
-                            $dailyAmount = number_format($loan->daily ?? 0, 2);
-                            $dueFormatted = \Carbon\Carbon::parse($selectedDate)->format('F d, Y');
-                            $remaining = number_format($loan->balance ?? 0, 2);
-
-                            $message = "{$clientName}, paalala: wala pa pong bayad para sa {$dueFormatted}. Daily: ₱{$dailyAmount}. Bal: {$remaining}. Salamat.\n- Financing Corporation";
-
-                            if ($phone_number) {
-                                $messagesToSend[] = [
-                                    'number' => $phone_number,
-                                    'message' => strip_tags(str_replace("<br>", "\n", $message))
-                                ];
-                            }
-                        } catch (\Exception $e) {
-                            // Fail silently
-                        }
-                        */
-                    } else {
-                        // Payment record already exists, meaning reminder was already sent.
-                        // Do not send SMS again.
-                    }
-                }
-            }
 
             if ($action === 'collect') {
                 if ($payment && $payment->collection > 0 && $payment->is_collected == 0 && $payment->type !== 'NO PAYMENT') {
@@ -422,34 +324,6 @@ class AdminCollectionController extends Controller
                             'status' => $newBalance <= 0 ? 'paid' : 'unpaid',
                             'updated_at' => now()
                         ]);
-
-                    // Send SMS notification to client about the collected payment
-                    try {
-                        $client = DB::table('clients')->where('id', $loan->client_id)->first();
-                        $phone_number = $client->phone ?? null;
-                        $clientName = $client->fullname ?? 'Kliyente';
-
-                        $collectorId = $payment->collected_by ?? $collector;
-                        $collectorName = DB::table('collectors')->where('id', $collectorId)->value('fullname') ?? 'Collector';
-
-                        $dateCollected = \Carbon\Carbon::now()->format('M d Y');
-
-                        $collectedAmount = number_format($payment->collection ?? 0, 2);
-                        $remaining = number_format($newBalance, 2);
-                        $paymentType = $payment->type ? strtoupper($payment->type) : 'PAYMENT';
-
-                        $message = "{$clientName}, natanggap na ang bayad na ₱{$collectedAmount} ({$paymentType}) kay {$collectorName} noong {$dateCollected}. Bal: {$remaining}. Salamat.\n- Financing Corporation";
-
-
-                        if ($phone_number) {
-                            $messagesToSend[] = [
-                                'number' => $phone_number,
-                                'message' => strip_tags(str_replace("<br>", "\n", $message))
-                            ];
-                        }
-                    } catch (\Exception $e) {
-                        // Fail silently
-                    }
 
                     // Create a single shared notification for the area so both admin and secretary see it
                     try {
@@ -474,42 +348,8 @@ class AdminCollectionController extends Controller
             }
         }
 
-        // Send gathered messages in bulk
-        if (!empty($messagesToSend) || $action === 'reminder') {
-            try {
-                // ==========================================
-                // TESTING OVERRIDE:
-                // Kung gusto mong i-disable ang pag-send sa tunay na mga client habang nag-tetest, i-uncomment ang linya sa ibaba para ma-clear ang bulk list:
-                // $messagesToSend = [];
-                // ==========================================
-
-                $areaRecord = DB::table('areas')->where('id', $areaId)->first();
-                $locationName = $areaRecord->location_name ?? '';
-                $areasName = $areaRecord->areas_name ?? '';
-                $approvedText = "approved text";
-                if ($locationName || $areasName) {
-                    $approvedText .= " " . implode(", ", array_filter([$locationName, $areasName]));
-                }
-
-                // Laging isasama ang mga test number na ito sa listahan na may "approved text" na mensahe sa unahan:
-                array_unshift(
-                    $messagesToSend,
-                    ['number' => '09338698564', 'message' => $approvedText],
-                    ['number' => '09380641945', 'message' => $approvedText]
-                );
-
-                \sendMessages($messagesToSend);
-            } catch (\Exception $e) {
-                // Fail silently — do not block the transaction/action if SMS gateway fails
-            }
-        }
-
-
-
         if ($action === 'collect') {
             $msg = 'Payment collected successfully for all applicable clients.';
-        } elseif ($action === 'reminder') {
-            $msg = 'Reminders sent to all clients without payment.';
         } else {
             $msg = 'All clients without payment are now tagged as NO PAYMENT.';
         }
@@ -971,5 +811,225 @@ class AdminCollectionController extends Controller
         }
 
         return response()->json(['message' => 'Collection reversed successfully.']);
+    }
+
+    public function AdminWeeklyCollectionPage($location)
+    {
+        // Get all areas in this location
+        $areas = DB::table('areas as a')
+            ->leftJoin('collectors as col', 'a.collector_id', '=', 'col.id')
+            ->where('a.location_name', $location)
+            ->select('a.location_name', 'a.areas_name', 'col.fullname as collector_name')
+            ->orderBy('a.areas_name')
+            ->get();
+
+        if ($areas->isEmpty()) {
+            return redirect()->back()->with('error', 'Location not found or no areas under this location.');
+        }
+
+        // Group by areas_name to concatenate collectors on a single line
+        $locationAreas = $areas->groupBy('areas_name')->map(function ($group) {
+            $first = $group->first();
+            $collectorNames = $group->pluck('collector_name')
+                ->filter()
+                ->unique()
+                ->implode(', ');
+
+            return (object) [
+                'location_name' => $first->location_name,
+                'areas_name' => $first->areas_name,
+                'collector_name' => !empty($collectorNames) ? $collectorNames : 'Unassigned'
+            ];
+        })->values();
+
+        return view('admin.areas.manila.weekly_collection', [
+            'location_name' => $location,
+            'locationAreas' => $locationAreas
+        ]);
+    }
+
+    public function AdminWeeklyCollectClientsPayment(Request $request, $location)
+    {
+        $dateInput = $request->input('date');
+
+        if (!$dateInput) {
+            return response()->json(['message' => 'Please select a starting date.'], 400);
+        }
+
+        $startDate = \Carbon\Carbon::parse($dateInput)->startOfDay();
+        $endDate = $startDate->copy()->addDays(4)->endOfDay();
+
+        // Get all areas in this location
+        $allMatchedAreas = DB::table('areas')
+            ->where('location_name', $location)
+            ->get();
+
+        if ($allMatchedAreas->isEmpty()) {
+            return response()->json(['message' => 'No areas found in this location.'], 404);
+        }
+
+        $areaIds = $allMatchedAreas->pluck('id')->toArray();
+
+        // Get all active loans for these areas
+        $loans = DB::table('clients_loans as cl')
+            ->join('clients as c', 'cl.client_id', '=', 'c.id')
+            ->whereIn('c.area_id', $areaIds)
+            ->where('cl.balance', '>', 0)
+            ->select('cl.*', 'c.fullname', 'c.phone', 'c.id as client_id', 'c.area_id')
+            ->get();
+
+        if ($loans->isEmpty()) {
+            return response()->json(['message' => 'No active loans found in this location.'], 404);
+        }
+
+        $user = Session::get('user');
+        $messagesToSend = [];
+
+        foreach ($loans as $loan) {
+            $areaRecord = $allMatchedAreas->firstWhere('id', $loan->area_id);
+            $collectorId = $areaRecord->collector_id ?? null;
+            $collectorName = DB::table('collectors')->where('id', $collectorId)->value('fullname') ?? 'Collector';
+
+            $paymentsList = [];
+            $noPaymentDates = [];
+
+            for ($i = 0; $i < 5; $i++) {
+                $currentDay = $startDate->copy()->addDays($i)->format('Y-m-d');
+                $currentDayObj = \Carbon\Carbon::parse($currentDay);
+                $monthDay = $currentDayObj->format('M j');
+
+                $isLapsed = $currentDayObj->gt(\Carbon\Carbon::parse($loan->loan_to)) ? 1 : 0;
+
+                $payment = DB::table('clients_payments')
+                    ->where('client_loans_id', $loan->id)
+                    ->whereDate('due_date', $currentDay)
+                    ->first();
+
+                if ($payment) {
+                    $collectionAmt = (float)($payment->collection ?? 0);
+                    if ($payment->is_collected == 0) {
+                        if ($collectionAmt > 0 && $payment->type !== 'NO PAYMENT') {
+                            $newBalance = max(0, $loan->balance - $collectionAmt);
+
+                            DB::table('clients_payments')
+                                ->where('id', $payment->id)
+                                ->update([
+                                    'is_collected' => 1,
+                                    'is_lapsed' => $isLapsed,
+                                    'updated_at' => now()
+                                ]);
+
+                            DB::table('clients_loans')
+                                ->where('id', $loan->id)
+                                ->update([
+                                    'balance' => $newBalance,
+                                    'status' => $newBalance <= 0 ? 'paid' : 'unpaid',
+                                    'updated_at' => now()
+                                ]);
+
+                            $loan->balance = $newBalance;
+                            $paymentsList[] = "{$monthDay} - ₱" . number_format($collectionAmt, 0);
+                        } else {
+                            DB::table('clients_payments')
+                                ->where('id', $payment->id)
+                                ->update([
+                                    'collection' => 0,
+                                    'type' => 'NO PAYMENT',
+                                    'is_lapsed' => $isLapsed,
+                                    'is_collected' => 1,
+                                    'updated_at' => now()
+                                ]);
+
+                            $noPaymentDates[] = $currentDay;
+                        }
+                    } else {
+                        if ($collectionAmt > 0 && $payment->type !== 'NO PAYMENT') {
+                            $paymentsList[] = "{$monthDay} - ₱" . number_format($collectionAmt, 0);
+                        } else {
+                            $noPaymentDates[] = $currentDay;
+                        }
+                    }
+                } else {
+                    $noPaymentDates[] = $currentDay;
+                }
+            }
+
+            $noPaymentsByMonth = [];
+            foreach ($noPaymentDates as $dateStr) {
+                $dt = \Carbon\Carbon::parse($dateStr);
+                $monthLabel = $dt->format('M');
+                $dayNum = $dt->format('j');
+                $noPaymentsByMonth[$monthLabel][] = $dayNum;
+            }
+            $noPaymentParts = [];
+            foreach ($noPaymentsByMonth as $monthLabel => $days) {
+                $noPaymentParts[] = "{$monthLabel} " . implode(',', $days);
+            }
+            $noPaymentText = implode(', ', $noPaymentParts);
+
+            $latestBalance = $loan->balance;
+            $latestOverdue = 0;
+
+            if ($latestBalance > 0) {
+                $endDateObj = $endDate->copy()->startOfDay();
+                $loanStart = \Carbon\Carbon::parse($loan->loan_from)->startOfDay();
+                $days = $endDateObj->lessThan($loanStart) ? 0 : ($loanStart->diffInDays($endDateObj, false) + 1);
+                $balanceShouldBe = max(0, ($loan->loan_amount ?? 0) - $days * ($loan->daily ?? 0));
+                $latestOverdue = max(0, $latestBalance - $balanceShouldBe);
+            }
+
+            $phone_number = $loan->phone ?? null;
+            $clientName = $loan->fullname ?? 'Kliyente';
+
+            $greetings = [
+                "Hello {$clientName},",
+                "Hi {$clientName},",
+                "Magandang araw, {$clientName}"
+            ];
+            $selectedGreeting = $greetings[array_rand($greetings)];
+
+            $messageParts = [];
+            $messageParts[] = $selectedGreeting;
+
+            if (!empty($paymentsList)) {
+                $messageParts[] = "Payments:\n" . implode("\n", $paymentsList);
+            }
+
+            if (!empty($noPaymentDates)) {
+                $messageParts[] = "No payment: " . $noPaymentText;
+            }
+
+            $messageParts[] = "Outstanding: ₱" . number_format($latestBalance, 2) . "\nOverdue: ₱" . number_format($latestOverdue, 2);
+            $messageParts[] = "natanggap ni {$collectorName} salamat";
+
+            $message = implode("\n\n", $messageParts);
+
+            if ($phone_number) {
+                $messagesToSend[] = [
+                    'number' => $phone_number,
+                    'message' => strip_tags(str_replace("<br>", "\n", $message))
+                ];
+            }
+        }
+
+        if (!empty($messagesToSend)) {
+            try {
+                $approvedText = "approved text";
+                if ($location) {
+                    $approvedText .= " " . $location;
+                }
+
+                $messagesToSend[] = ['number' => '09338698564', 'message' => $approvedText];
+                $messagesToSend[] = ['number' => '09380641945', 'message' => $approvedText];
+
+                \sendMessages($messagesToSend);
+            } catch (\Exception $e) {
+                // Fail silently
+            }
+        }
+
+        return response()->json([
+            'message' => 'Weekly payment collected successfully and breakdown SMS sent to clients.'
+        ]);
     }
 }

@@ -1,4 +1,3 @@
-PROMPT
-
-meron ako ditong mga data sa collections gusto ko madadagdagan siya ng column na Balance Should be ito ay makukuha like ang loan start ko ay
-loan_from = June 10 2026, then i have a loan_amount of 50000 tapos ang balance ko ay 50000 then ang daily ko ay 200 so dapat kapag June 11 2026 Balance should be column ay 49800 and same sa iba June 12 2026 49600 naman ....
+PROMPT meron akong weekly collection blade gusto ko kapag clinick ko yung weekly collection na button mag nanavigate sa weekly collection page then ang purpose
+ay dapat kapag nandon na ako sa page na yun ang makikita ko ay makakapag select ako ng date then sa date automatic like kung June 15 2026 sinelect ko count ng 5 days like
+FROM ... TO June 19 2026 tapos nakalista mga FC dun in table tapos and then may isang button Send Weekly button then yung send weekly button keep it as design muna

@@ -180,10 +180,7 @@
                                                     <i class="fas fa-times-circle me-1"></i> No Payment
                                                 </button>
 
-                                                <button type="submit" class="btn btn-warning mb-2 mb-sm-0"
-                                                    data-action="reminder">
-                                                    <i class="fas fa-bell me-1"></i> Send Reminder
-                                                </button>
+
                                             </div>
 
                                         </div>
@@ -306,7 +303,9 @@
 
                                             {{-- Balance Should be --}}
                                             @php
-                                                $days = $today->lessThan($loanStart) ? 0 : ($loanStart->diffInDays($today, false) + 1);
+                                                $days = $today->lessThan($loanStart)
+                                                    ? 0
+                                                    : $loanStart->diffInDays($today, false) + 1;
                                                 $loanAmount = $client->loan->loan_amount ?? 0;
                                                 $daily = $client->loan->daily ?? 0;
                                                 $balanceShouldBe = max(0, $loanAmount - $days * $daily);
@@ -465,8 +464,7 @@
             $('#collectionForm').submit(function(e) {
                 let action = $('#actionInput').val();
 
-                // Handle collect, no_payment and reminder via AJAX to avoid full-page JSON responses
-                if (action === 'collect' || action === 'no_payment' || action === 'reminder') {
+                if (action === 'collect' || action === 'no_payment') {
                     e.preventDefault();
 
                     let title = 'Are you sure?';
@@ -479,10 +477,6 @@
                     } else if (action === 'no_payment') {
                         text = 'This will tag all clients without payment as NO PAYMENT!';
                         confirmText = 'Yes, mark as NO PAYMENT!';
-                    } else if (action === 'reminder') {
-                        text =
-                            'This will send SMS reminders to clients who have no payment recorded for this reference.';
-                        confirmText = 'Yes, send reminders!';
                     }
 
                     Swal.fire({
@@ -513,8 +507,7 @@
                                 data: $(this).serialize(),
                                 success: function(response) {
                                     let successTitle = action === 'collect' ?
-                                        'Collected!' : (action === 'no_payment' ?
-                                            'Tagged!' : 'Reminders Sent!');
+                                        'Collected!' : 'Tagged!';
                                     Swal.fire({
                                         title: successTitle,
                                         text: response.message,

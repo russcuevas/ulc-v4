@@ -135,6 +135,12 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
     Route::get('/areas/{areaId}/collections/summary-print', [AdminCollectionController::class, 'AdminPrintSummaryCollection'])
         ->name('admin.areas.collections.summary.print');
 
+    Route::get('/weekly-collection/{location}', [AdminCollectionController::class, 'AdminWeeklyCollectionPage'])
+        ->name('admin.areas.collections.weekly');
+
+    Route::post('/weekly-collection/{location}/collect', [AdminCollectionController::class, 'AdminWeeklyCollectClientsPayment'])
+        ->name('admin.areas.collections.weekly_collect');
+
     Route::get('/areas/{location}', [AdminManilaController::class, 'AdminManilaPage'])
         ->name('admin.areas.location.page');
 });
@@ -190,6 +196,12 @@ Route::middleware('role:secretary')->prefix('secretary')->name('secretary.')->gr
     // AREAS COLLECTION PAGE
     Route::get('/areas/{areaId}/collections', [SecretaryCollectionController::class, 'SecretaryCollectionReferencesPage'])
         ->name('areas.collections.references');
+
+    Route::get('/weekly-collection/{location}', [SecretaryCollectionController::class, 'SecretaryWeeklyCollectionPage'])
+        ->name('areas.collections.weekly');
+
+    Route::post('/weekly-collection/{location}/collect', [SecretaryCollectionController::class, 'SecretaryWeeklyCollectClientsPayment'])
+        ->name('areas.collections.weekly_collect');
 
     Route::get('/collections/{referenceNumber}', [SecretaryCollectionController::class, 'SecretaryCollectionDetailPage'])
         ->name('collections.detail');

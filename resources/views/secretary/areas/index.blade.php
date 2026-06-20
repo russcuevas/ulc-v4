@@ -97,21 +97,29 @@
                                 <div class="card-header">
                                     <h3 class="card-title" id="cardHeader">All Assigned Areas</h3>
                                     <div class="card-tools">
-                                        <button type="button" class="btn btn-sm btn-info" data-toggle="modal"
-                                            data-target="#printSalesModal">
-                                            <i class="fas fa-print"></i> Print Sales
-                                        </button>
+                                        <div class="d-flex align-items-center">
+                                            <a id="weeklyCollectionBtn" href="{{ $areas->first() ? route('secretary.areas.collections.weekly', ['location' => $areas->first()->location_name]) : '#' }}"
+                                                class="btn btn-success btn-sm mr-2{{ $areas->first() ? '' : ' disabled' }}">
+                                                <i class="fas fa-hand-holding"></i> Weekly Collection
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-info" data-toggle="modal"
+                                                data-target="#printSalesModal">
+                                                <i class="fas fa-print"></i> Print Sales
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="card-body">
                                     <div class="row mb-3">
                                         <div class="col-md-4">
                                             <div class="form-group mb-0">
-                                                <label for="locationFilter" class="font-weight-bold"><i class="fas fa-filter"></i> Filter by Location</label>
+                                                <label for="locationFilter" class="font-weight-bold"><i
+                                                        class="fas fa-filter"></i> Filter by Location</label>
                                                 <select id="locationFilter" class="form-control">
                                                     <option value="all">-- All Locations --</option>
                                                     @foreach ($areas->pluck('location_name')->unique() as $location)
-                                                        <option value="{{ $location }}">{{ $location }}</option>
+                                                        <option value="{{ $location }}">{{ $location }}
+                                                        </option>
                                                     @endforeach
                                                 </select>
                                             </div>
@@ -132,7 +140,9 @@
                                                 @endphp
                                                 <tr>
                                                     <td>{{ $area->location_name }}</td>
-                                                    <td data-order="{{ preg_replace_callback('/\d+/', fn($m) => sprintf('%04d', $m[0]), $area->areas_name) }}">{{ $area->areas_name }}</td>
+                                                    <td
+                                                        data-order="{{ preg_replace_callback('/\d+/', fn($m) => sprintf('%04d', $m[0]), $area->areas_name) }}">
+                                                        {{ $area->areas_name }}</td>
                                                     <td>
                                                         <a href="{{ route('secretary.areas.clients.page', $area->id) }}"
                                                             class="btn btn-sm btn-info">
@@ -189,7 +199,8 @@
                                     @php
                                         $area = $rows->first();
                                     @endphp
-                                    <option value="{{ $area->id }}">{{ $area->location_name }} - {{ $area->areas_name }}</option>
+                                    <option value="{{ $area->id }}">{{ $area->location_name }} -
+                                        {{ $area->areas_name }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -270,7 +281,8 @@
                 var isLoadPending = false;
                 var loaderId = tableId.replace('#', '') + '_lazyLoader';
 
-                var loaderHtml = '<div id="' + loaderId + '" class="text-center py-3 lazy-loader-indicator" style="display: none;">' +
+                var loaderHtml = '<div id="' + loaderId +
+                    '" class="text-center py-3 lazy-loader-indicator" style="display: none;">' +
                     '<div class="spinner-border text-primary" role="status" style="color: #FF5F00 !important;">' +
                     '<span class="sr-only">Loading...</span>' +
                     '</div>' +
@@ -278,7 +290,8 @@
                 $(tableId).after(loaderHtml);
 
                 if ($('#lazy-hidden-style').length === 0) {
-                    $('head').append('<style id="lazy-hidden-style">.lazy-hidden { display: none !important; }</style>');
+                    $('head').append(
+                        '<style id="lazy-hidden-style">.lazy-hidden { display: none !important; }</style>');
                 }
 
                 function applyLazyLoading() {
@@ -337,12 +350,27 @@
             // Custom search filter for exact match on location column (index 0)
             $('#locationFilter').on('change', function() {
                 var val = $(this).val();
-                
+
                 // Update page title and card title
                 var displayTitle = (val === 'all') ? 'Assigned Areas' : val;
                 var displayCard = (val === 'all') ? 'All Assigned Areas' : val;
                 $('#pageHeader').text(displayTitle);
                 $('#cardHeader').text(displayCard);
+
+                // Update Weekly Collection button link
+                var weeklyUrl = "";
+                if (val === 'all') {
+                    var firstLoc = "{{ $areas->first()->location_name ?? '' }}";
+                    if (firstLoc) {
+                        weeklyUrl = "{{ route('secretary.areas.collections.weekly', ['location' => ':location']) }}".replace(':location', encodeURIComponent(firstLoc));
+                        $('#weeklyCollectionBtn').removeClass('disabled').attr('href', weeklyUrl);
+                    } else {
+                        $('#weeklyCollectionBtn').addClass('disabled').attr('href', '#');
+                    }
+                } else {
+                    weeklyUrl = "{{ route('secretary.areas.collections.weekly', ['location' => ':location']) }}".replace(':location', encodeURIComponent(val));
+                    $('#weeklyCollectionBtn').removeClass('disabled').attr('href', weeklyUrl);
+                }
 
                 if (val === 'all') {
                     table.column(0).search('').draw();

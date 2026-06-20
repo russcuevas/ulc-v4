@@ -96,6 +96,10 @@
                                 <div class="card-header">
                                     <h3 class="card-title">{{ $location_name }}</h3>
                                     <div class="card-tools">
+                                        <a href="{{ route('admin.areas.collections.weekly', ['location' => $location_name]) }}"
+                                            class="btn btn-success btn-sm mr-2">
+                                            <i class="fas fa-hand-holding"></i> Weekly Collection
+                                        </a>
                                         <button type="button" class="btn btn-sm btn-info" data-toggle="modal"
                                             data-target="#printSalesModal">
                                             <i class="fas fa-print"></i> Print Sales

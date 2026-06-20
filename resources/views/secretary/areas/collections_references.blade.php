@@ -141,10 +141,12 @@
                         <div class="card-header">
                             <div class="d-flex align-items-center justify-content-between w-100">
                                 <h3 class="card-title mb-0">Payment References - {{ $areas_name }}</h3>
-                                <button type="button" class="btn btn-info btn-sm" data-toggle="modal"
-                                    data-target="#printSummaryModal">
-                                    <i class="fas fa-print"></i> Print Summary
-                                </button>
+                                <div class="d-flex align-items-center">
+                                    <button type="button" class="btn btn-info btn-sm" data-toggle="modal"
+                                        data-target="#printSummaryModal">
+                                        <i class="fas fa-print"></i> Print Summary
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         <div class="card-body">
@@ -164,7 +166,8 @@
                                     @foreach ($references as $ref)
                                         <tr>
                                             <td>{{ $ref->reference_number }}</td>
-                                            <td data-order="{{ $ref->due_date }}">{{ \Carbon\Carbon::parse($ref->due_date)->format('F j, Y') }}</td>
+                                            <td data-order="{{ $ref->due_date }}">
+                                                {{ \Carbon\Carbon::parse($ref->due_date)->format('F j, Y') }}</td>
                                             <td>{{ $ref->collected_by_name ?? 'N/A' }}</td>
                                             <td>{{ $ref->total_clients }}</td>
                                             <td>₱{{ number_format($ref->total_daily_collectibles ?? 0, 2) }}</td>
@@ -180,7 +183,8 @@
                                 </tbody>
                             </table>
                             <div id="lazyLoader" class="text-center py-3" style="display: none;">
-                                <div class="spinner-border text-primary" role="status" style="color: #FF5F00 !important;">
+                                <div class="spinner-border text-primary" role="status"
+                                    style="color: #FF5F00 !important;">
                                     <span class="sr-only">Loading...</span>
                                 </div>
                             </div>
@@ -257,7 +261,9 @@
                 "searching": true,
                 "ordering": true,
                 "responsive": true,
-                "order": [[1, "desc"]]
+                "order": [
+                    [1, "desc"]
+                ]
             });
 
             // Lazy loading variables
