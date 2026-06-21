@@ -28,6 +28,14 @@ class AuthController extends Controller
             return redirect()->route('admin.dashboard.page')->with('success', 'Welcome back, Admin!');
         }
 
+        // MANAGEMENT
+        $management = DB::table('managements')->where('email', $email)->first();
+        if ($management && Hash::check($password, $management->password)) {
+            Session::put('user', $management);
+            Session::put('role', 'management');
+            return redirect()->route('management.dashboard.page')->with('success', 'Welcome back, Management!');
+        }
+
         // SECRETARY
         $secretary = DB::table('secretaries')->where('email', $email)->first();
         if ($secretary && Hash::check($password, $secretary->password)) {

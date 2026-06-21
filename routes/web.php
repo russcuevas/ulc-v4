@@ -21,6 +21,8 @@ use App\Http\Controllers\secretary\SecretaryCollectorController;
 use App\Http\Controllers\secretary\SecretaryDashboardController;
 
 // COLLECTOR
+use App\Http\Controllers\management\ManagementDashboardController;
+use App\Http\Controllers\management\ManagementAreaController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -244,6 +246,26 @@ Route::middleware('role:collector')->prefix('collector')->name('collector.')->gr
         ->name('collections.store');
     Route::post('/collections/bulk-store', [CollectorCollectionController::class, 'CollectorBulkCollectPaymentRequest'])
         ->name('collections.bulk-store');
+});
+
+// MANAGEMENT ROUTES
+Route::middleware('role:management')->prefix('management')->name('management.')->group(function () {
+    // DASHBOARD
+    Route::get('/dashboard', [ManagementDashboardController::class, 'ManagementDashboardPage'])
+        ->name('dashboard.page');
+
+    // AREAS
+    Route::get('/areas', [ManagementAreaController::class, 'ManagementAreasPage'])
+        ->name('areas.page');
+    Route::get('/areas/{location}', [ManagementAreaController::class, 'ManagementManilaPage'])
+        ->name('areas.location.page');
+    Route::get('/areas/{areaId}/collections', [ManagementAreaController::class, 'ManagementCollectionReferencesPage'])
+        ->name('areas.collections.references');
+    Route::get('/collections/{referenceNumber}', [ManagementAreaController::class, 'ManagementCollectionDetailPage'])
+        ->name('collections.detail');
+    Route::get('/collections/print/{refNo}', [ManagementAreaController::class, 'ManagementPrintCollection'])
+        ->name('collections.print');
+
 });
 
 // Notifications page (shared)

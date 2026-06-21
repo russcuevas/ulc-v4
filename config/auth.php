@@ -50,6 +50,11 @@ return [
             'driver' => 'session',
             'provider' => 'secretaries',
         ],
+
+        'management' => [
+            'driver' => 'session',
+            'provider' => 'managements',
+        ],
     ],
 
     /*
@@ -83,6 +88,11 @@ return [
         'secretaries' => [
             'driver' => 'eloquent',
             'model' => App\Models\Secretary::class,
+        ],
+
+        'managements' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\Management::class,
         ],
 
         // 'users' => [
