@@ -150,27 +150,37 @@ class CollectorCollectionController extends Controller
                     }
                 }
             ],
-            'type' => 'required|string'
+            'type' => 'required|string',
+            'savings' => 'nullable|numeric|min:0'
         ]);
 
         $collectionAmount = $request->type === 'NO PAYMENT' ? null : $request->collection;
 
-        DB::table('clients_payments')->insert([
-            'reference_number' => $request->reference_no,
-            'collected_by' => $user->id,
-            'due_date' => $request->due_date,
-            'client_id' => $request->client_id,
-            'client_loans_id' => $request->loan_id,
-            'client_area' => $request->area_id,
-            'daily' => $request->daily,
-            'old_balance' => $loan->balance, // ✅ real balance from DB
-            'collection' => $collectionAmount,
-            'type' => $request->type,
-            'is_collected' => 0,
-            'created_by' => $user->id,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        DB::transaction(function () use ($request, $user, $loan, $collectionAmount) {
+            DB::table('clients_payments')->insert([
+                'reference_number' => $request->reference_no,
+                'collected_by' => $user->id,
+                'due_date' => $request->due_date,
+                'client_id' => $request->client_id,
+                'client_loans_id' => $request->loan_id,
+                'client_area' => $request->area_id,
+                'daily' => $request->daily,
+                'old_balance' => $loan->balance, // real balance from DB
+                'collection' => $collectionAmount,
+                'savings_amount' => $request->savings ?? 0.00,
+                'type' => $request->type,
+                'is_collected' => 0,
+                'created_by' => $user->id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            if ($request->filled('savings') && $request->savings > 0) {
+                DB::table('clients_loans')
+                    ->where('id', $request->loan_id)
+                    ->increment('savings_balance', $request->savings);
+            }
+        });
 
         return redirect()->back()->with('success', 'Saved successfully!');
     }
@@ -215,12 +225,21 @@ class CollectorCollectionController extends Controller
                     'daily' => $paymentData['daily'],
                     'old_balance' => $loan->balance,
                     'collection' => $collectionAmount,
+                    'savings_amount' => $paymentData['savings'] ?? 0.00,
                     'type' => $paymentData['type'],
                     'is_collected' => 0,
                     'created_by' => $user->id,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+
+                // Increment savings balance if savings is input
+                $savingsAmount = $paymentData['savings'] ?? null;
+                if ($savingsAmount !== null && is_numeric($savingsAmount) && $savingsAmount > 0) {
+                    DB::table('clients_loans')
+                        ->where('id', $paymentData['loan_id'])
+                        ->increment('savings_balance', $savingsAmount);
+                }
             }
 
             DB::commit();

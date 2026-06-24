@@ -266,6 +266,9 @@
                                         <th>Old Balance</th>
                                         <th>Outstanding Balance</th>
                                         <th>Daily</th>
+                                        @if (stripos($location_name ?? '', 'Financial Counselor') !== false)
+                                            <th>Savings</th>
+                                        @endif
                                         <th>Collection</th>
                                         <th>Type</th>
                                         <th>Status</th>
@@ -316,13 +319,13 @@
                                             <td>₱{{ number_format($client->overdueVal ?? 0, 2) }}</td>
 
                                             {{-- Old Balance --}}
-                                            <td>₱{{ number_format($client->oldBalanceDisplay ?? 0, 2) }}</td>
+                                            <td class="old-balance-cell">₱{{ number_format($client->oldBalanceDisplay ?? 0, 2) }}</td>
 
                                             {{-- Outstanding Balance --}}
-                                            <td>₱{{ number_format($client->outstandingBalanceDisplay ?? 0, 2) }}</td>
+                                            <td class="outstanding-balance-cell">₱{{ number_format($client->outstandingBalanceDisplay ?? 0, 2) }}</td>
 
                                             {{-- Daily --}}
-                                            <td>
+                                            <td class="daily-cell">
                                                 @if ($client->payment)
                                                     ₱{{ number_format($client->payment->daily, 2) }}
                                                 @else
@@ -330,8 +333,12 @@
                                                 @endif
                                             </td>
 
+                                            @if (stripos($location_name ?? '', 'Financial Counselor') !== false)
+                                                <td class="savings-cell">₱{{ number_format($client->payment->savings_amount ?? 0, 2) }}</td>
+                                            @endif
+
                                             {{-- Collection --}}
-                                            <td>
+                                            <td class="collection-cell">
                                                 @if ($client->payment && !is_null($client->payment->collection))
                                                     ₱{{ number_format($client->payment->collection, 2) }}
                                                 @else
@@ -421,6 +428,11 @@
                                         <th>
                                             <span id="totalDailySummary">₱0.00</span>
                                         </th>
+                                        @if (stripos($location_name ?? '', 'Financial Counselor') !== false)
+                                            <th>
+                                                <span id="totalSavingsSummary">₱0.00</span>
+                                            </th>
+                                        @endif
                                         <th>
                                             <span id="totalCollectionSummary">₱0.00</span>
                                         </th>
@@ -554,18 +566,17 @@
                     var balanceTotal = 0;
                     var dailyTotal = 0;
                     var collectionTotal = 0;
+                    var savingsTotal = 0;
 
                     $('#referencesTable tbody tr').each(function() {
                         // Check if it's not hidden by search filter (search filter hides rows completely, but lazy-hidden is just for pagination)
                         if ($(this).css('display') !== 'none' || $(this).hasClass(
                                 'lazy-hidden')) {
-                            var cells = $(this).find('td');
-                            if (cells.length >= 8) {
-                                oldBalanceTotal += intVal($(cells[4]).html());
-                                balanceTotal += intVal($(cells[5]).html());
-                                dailyTotal += intVal($(cells[6]).html());
-                                collectionTotal += intVal($(cells[7]).html());
-                            }
+                            oldBalanceTotal += intVal($(this).find('.old-balance-cell').html());
+                            balanceTotal += intVal($(this).find('.outstanding-balance-cell').html());
+                            dailyTotal += intVal($(this).find('.daily-cell').html());
+                            collectionTotal += intVal($(this).find('.collection-cell').html());
+                            savingsTotal += intVal($(this).find('.savings-cell').html());
                         }
                     });
 
@@ -579,6 +590,10 @@
                         maximumFractionDigits: 2
                     }));
                     $('#totalDailySummary').html('₱' + dailyTotal.toLocaleString('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    }));
+                    $('#totalSavingsSummary').html('₱' + savingsTotal.toLocaleString('en-US', {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2
                     }));

@@ -388,6 +388,7 @@ class AdminCollectionController extends Controller
                 'cl.loan_to',
                 'cl.loan_from',
                 'cl.daily as cl_daily',
+                'cl.savings_balance',
                 'col.fullname as collected_by_name'
             )
             ->orderBy('c.fullname')
@@ -978,17 +979,23 @@ class AdminCollectionController extends Controller
                                     'updated_at' => now()
                                 ]);
 
-                            $noPaymentDates[] = $currentDay;
+                            if ($currentDayObj->gte(\Carbon\Carbon::parse($loan->loan_from)->startOfDay())) {
+                                $noPaymentDates[] = $currentDay;
+                            }
                         }
                     } else {
                         if ($collectionAmt > 0 && $payment->type !== 'NO PAYMENT') {
                             $paymentsList[] = "{$monthDay} - ₱" . number_format($collectionAmt, 0);
                         } else {
-                            $noPaymentDates[] = $currentDay;
+                            if ($currentDayObj->gte(\Carbon\Carbon::parse($loan->loan_from)->startOfDay())) {
+                                $noPaymentDates[] = $currentDay;
+                            }
                         }
                     }
                 } else {
-                    $noPaymentDates[] = $currentDay;
+                    if ($currentDayObj->gte(\Carbon\Carbon::parse($loan->loan_from)->startOfDay())) {
+                        $noPaymentDates[] = $currentDay;
+                    }
                 }
             }
 
@@ -1037,7 +1044,11 @@ class AdminCollectionController extends Controller
                 $messageParts[] = "No payment: " . $noPaymentText;
             }
 
-            $messageParts[] = "Outstanding: ₱" . number_format($latestBalance, 2) . "\nOverdue: ₱" . number_format($latestOverdue, 2);
+            $outstandingText = "Outstanding: ₱" . number_format($latestBalance, 2) . "\nOverdue: ₱" . number_format($latestOverdue, 2);
+            if (stripos($location, 'Financial Counselor') !== false) {
+                $outstandingText .= "\nSavings: ₱" . number_format($loan->savings_balance ?? 0, 2);
+            }
+            $messageParts[] = $outstandingText;
             $messageParts[] = "natanggap ni {$collectorName} salamat";
 
             $message = implode("\n\n", $messageParts);

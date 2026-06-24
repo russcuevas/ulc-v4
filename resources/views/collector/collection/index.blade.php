@@ -240,6 +240,9 @@
                                                 <th>Balance</th>
                                                 <th>Daily</th>
                                                 <th>Collection</th>
+                                                @if (stripos($area->location_name ?? '', 'Financial Counselor') !== false)
+                                                    <th>Savings</th>
+                                                @endif
                                                 <th>Type</th>
                                                 <th>Status</th>
                                             </tr>
@@ -288,6 +291,12 @@
                                                             @endif
                                                         </td>
 
+                                                        @if (stripos($area->location_name ?? '', 'Financial Counselor') !== false)
+                                                            <td>
+                                                                ₱{{ number_format($client->payment->savings_amount ?? 0, 2) }}
+                                                            </td>
+                                                        @endif
+
                                                         <td>
                                                             {{ $client->payment->type ?? '-' }}
                                                         </td>
@@ -320,13 +329,20 @@
 
                                                         </td>
 
+                                                        @if (stripos($area->location_name ?? '', 'Financial Counselor') !== false)
+                                                            <td>
+                                                                <input type="number" step="0.01" name="savings"
+                                                                    class="form-control" min="0"
+                                                                    placeholder="Enter savings if any">
+                                                            </td>
+                                                        @endif
+
                                                         <td>
                                                             <select name="type" class="form-control" required>
                                                                 <option value="">Select</option>
                                                                 <option value="CASH">CASH</option>
                                                                 <option value="GCASH">GCASH</option>
                                                                 <option value="CHEQUE">CHEQUE</option>
-                                                                <option value="NO PAYMENT">NO PAYMENT</option>
                                                             </select>
                                                         </td>
 
@@ -562,6 +578,7 @@
                             tr: tr,
                             type: typeSelect.val(),
                             collection: tr.find('input[name="collection"]').val() || null,
+                            savings: tr.find('input[name="savings"]').val() || null,
                             clientId: tr.data('client-id'),
                             loanId: tr.data('loan-id'),
                             areaId: tr.data('area-id'),
@@ -585,6 +602,7 @@
                         <input type="hidden" name="payments[${index}][area_id]" value="${payment.areaId}">
                         <input type="hidden" name="payments[${index}][daily]" value="${payment.daily}">
                         <input type="hidden" name="payments[${index}][collection]" value="${payment.collection}">
+                        <input type="hidden" name="payments[${index}][savings]" value="${payment.savings || ''}">
                         <input type="hidden" name="payments[${index}][type]" value="${payment.type}">
                     `);
                 });

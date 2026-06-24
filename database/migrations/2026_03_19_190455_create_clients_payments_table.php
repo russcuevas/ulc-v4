@@ -22,6 +22,7 @@ return new class extends Migration
             $table->decimal('daily', 12, 2)->nullable();
             $table->decimal('old_balance', 12, 2)->nullable();
             $table->decimal('collection', 12, 2)->nullable();
+            $table->decimal('savings_amount', 10, 2)->default(0.00);
             $table->string('type')->nullable();
             $table->boolean('is_lapsed')->default(0);
             $table->boolean('is_collected')->default(0);

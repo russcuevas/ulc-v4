@@ -185,6 +185,9 @@
                 <th>Old Balance</th>
                 <th>Outstanding Balance</th>
                 <th>Daily</th>
+                @if (stripos($area->location_name ?? '', 'Financial Counselor') !== false)
+                    <th>Savings</th>
+                @endif
                 <th>Collection</th>
                 <th>Type</th>
             </tr>
@@ -199,6 +202,9 @@
                     <td>₱{{ number_format($payment->oldBalanceDisplay ?? 0, 2) }}</td>
                     <td>₱{{ number_format($payment->outstandingBalanceDisplay ?? 0, 2) }}</td>
                     <td>₱{{ number_format($payment->daily ?? 0, 2) }}</td>
+                    @if (stripos($area->location_name ?? '', 'Financial Counselor') !== false)
+                        <td>₱{{ number_format($payment->savings_amount ?? 0, 2) }}</td>
+                    @endif
                     <td>
                         {{ is_numeric($payment->collection) ? '₱' . number_format($payment->collection, 2) : '-' }}
                     </td>

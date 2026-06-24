@@ -79,6 +79,9 @@
                         <td>Mode</td>
                         <td>Amount</td>
                         <td>Balance</td>
+                        @if (stripos($area->location_name ?? '', 'Financial Counselor') !== false)
+                            <td>Savings</td>
+                        @endif
                         <td>Daily</td>
                         <td>Status</td>
                     </tr>
@@ -93,12 +96,15 @@
                             <td>{{ ucfirst($loan->loan_status) }}</td>
                             <td>₱{{ number_format($loan->loan_amount, 2) }}</td>
                             <td>₱{{ number_format($loan->balance, 2) }}</td>
+                            @if (stripos($area->location_name ?? '', 'Financial Counselor') !== false)
+                                <td>₱{{ number_format($loan->savings_balance, 2) }}</td>
+                            @endif
                             <td>₱{{ number_format($loan->daily, 2) }}</td>
                             <td>{{ ucfirst($loan->payment_status ?? $loan->status) }}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="text-center">No loan records found</td>
+                            <td colspan="{{ stripos($area->location_name ?? '', 'Financial Counselor') !== false ? 10 : 9 }}" class="text-center">No loan records found</td>
                         </tr>
                     @endforelse
                 </tbody>

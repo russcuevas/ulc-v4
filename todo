@@ -1,9 +1,10 @@
 PROMPT 
 
-i need a management account 
+i need in my collector only in Financial Counselor area will do not in Manila Area Caloocan Area or etc what i want is add an column in database
+after balance add an savings_balance 
 
-and this is the feature
+ALTER TABLE clients_loans
+ADD COLUMN savings_balance DECIMAL(10,2) NULL AFTER balance;
 
-collection at transaction lang makikita nya sa mga areas at fc
-
-naka dropdown din katulad sa admin yung gilid
+ALTER TABLE clients_payments
+ADD COLUMN savings_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER collection;

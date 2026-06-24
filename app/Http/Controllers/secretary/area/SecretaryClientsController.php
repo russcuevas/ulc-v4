@@ -233,6 +233,13 @@ class SecretaryClientsController extends Controller
             'loan_terms'     => 'required|numeric|min:1',
         ]);
 
+        $lastLoan = DB::table('clients_loans')
+            ->where('client_id', $clientId)
+            ->orderBy('id', 'desc')
+            ->first();
+
+        $lastSavings = $lastLoan ? ($lastLoan->savings_balance ?? 0.00) : 0.00;
+
         DB::table('clients_loans')->insert([
             'client_id'      => $clientId,
             'pn_number'      => $request->pn_number,
@@ -244,9 +251,10 @@ class SecretaryClientsController extends Controller
             'daily'          => $request->daily,
             'principal'      => $request->loan_amount,
             'loan_terms'     => $request->loan_terms,
+            'savings_balance' => $lastSavings,
             'loan_status'    => 'renewal',
             'status'         => 'unpaid',
-            'created_by'     => 'Secretary', // ✅ changed
+            'created_by'     => 'Secretary',
             'created_at'     => now(),
             'updated_at'     => now(),
         ]);

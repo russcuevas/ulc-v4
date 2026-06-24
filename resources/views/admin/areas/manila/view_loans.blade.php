@@ -168,6 +168,9 @@
                                                 <th>Mode</th>
                                                 <th>Amount</th>
                                                 <th>Balance</th>
+                                                @if (stripos($location_name, 'Financial Counselor') !== false)
+                                                    <th>Savings</th>
+                                                @endif
                                                 <th>Daily</th>
                                                 <th>Status</th>
                                                 <th>Action</th>
@@ -195,6 +198,9 @@
 
                                                     <td>₱{{ number_format($loan->loan_amount, 2) }}</td>
                                                     <td>₱{{ number_format($loan->balance, 2) }}</td>
+                                                    @if (stripos($location_name, 'Financial Counselor') !== false)
+                                                        <td>₱{{ number_format($loan->savings_balance, 2) }}</td>
+                                                    @endif
                                                     <td>₱{{ number_format($loan->daily, 2) }}</td>
 
                                                     <td>
@@ -214,7 +220,7 @@
                                                 </tr>
                                             @empty
                                                 <tr>
-                                                    <td colspan="10" class="text-center">No loans found.</td>
+                                                    <td colspan="{{ stripos($location_name, 'Financial Counselor') !== false ? 11 : 10 }}" class="text-center">No loans found.</td>
                                                 </tr>
                                             @endforelse
                                         </tbody>

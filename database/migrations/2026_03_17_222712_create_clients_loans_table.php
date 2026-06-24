@@ -23,6 +23,7 @@ return new class extends Migration
 
             $table->decimal('loan_amount', 10, 2);
             $table->decimal('balance', 10, 2);
+            $table->decimal('savings_balance', 10, 2)->default(0.00);
 
             $table->decimal('daily', 10, 2)->nullable();
             $table->decimal('principal', 10, 2);
