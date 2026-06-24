@@ -186,23 +186,7 @@
                         <div class="col-sm-6">
                             <h1 class="m-0 section-title">
                                 Management Dashboard
-                                @if ($selectedArea && str_contains($selectedArea, '|'))
-                                    <span class="badge badge-warning"
-                                        style="background-color: #FF5F00; color: white; font-size: 16px; font-weight: 600; vertical-align: middle;">
-                                        {{ explode('|', $selectedArea)[1] }}
-                                    </span>
-                                @endif
                             </h1>
-                            <p class="mb-0 range-text">
-                                @if ($isFiltered)
-                                    From {{ $displayFrom }} to {{ $displayTo }}
-                                @else
-                                    All Time Overview
-                                @endif
-                                @if ($selectedArea && str_contains($selectedArea, '|'))
-                                    | Area: {{ str_replace('|', ' - ', $selectedArea) }}
-                                @endif
-                            </p>
                         </div>
                         <div class="col-sm-6 text-sm-right">
                             <h5 class="m-0" id="manila-time"></h5>
@@ -211,107 +195,11 @@
                 </div>
             </div>
 
-            <div class="content-header">
-                <div class="container-fluid">
-                    <form action="{{ route('management.dashboard.page') }}" method="GET" class="row align-items-end">
-                        <div class="col-md-3 mb-2">
-                            <label><i class="fas fa-calendar-alt mr-1"></i> From</label>
-                            <input type="date" name="from" class="form-control" value="{{ $displayFrom }}">
-                        </div>
-                        <div class="col-md-3 mb-2">
-                            <label><i class="fas fa-calendar-alt mr-1"></i> To</label>
-                            <input type="date" name="to" class="form-control" value="{{ $displayTo }}">
-                        </div>
-                        <div class="col-md-3 mb-2">
-                            <label><i class="fas fa-map-marker-alt mr-1"></i> Area</label>
-                            <select name="area" class="form-control">
-                                <option value="">-- All Areas --</option>
-                                @foreach ($areas as $a)
-                                    <option value="{{ $a->location_name }}|{{ $a->areas_name }}"
-                                        {{ $selectedArea === $a->location_name . '|' . $a->areas_name ? 'selected' : '' }}>
-                                        {{ $a->location_name }} - [{{ $a->areas_name }}]
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-md-3 mb-2 d-flex">
-                            <button type="submit" class="btn btn-primary btn-block mr-2"><i
-                                    class="fas fa-filter mr-1"></i> Apply Filter</button>
-                            <a href="{{ route('management.dashboard.page') }}"
-                                class="btn btn-outline-secondary btn-block mt-0"><i class="fas fa-undo mr-1"></i>
-                                Reset</a>
-                        </div>
-                    </form>
-                </div>
-            </div>
 
             <!-- Main content -->
             <section class="content">
                 <div class="container-fluid">
 
-                    <div class="row">
-                        <!-- Total Loan Amount Card -->
-                        <div class="col-xl-4 col-md-6 mb-3">
-                            <div class="dashboard-card p-3 d-flex align-items-center"
-                                style="border-top-color: #FF5F00; min-height: 110px;">
-                                <div class="bg-light p-3 rounded-circle mr-3"
-                                    style="color: #FF5F00; font-size: 24px; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center;">
-                                    <i class="fas fa-coins"></i>
-                                </div>
-                                <div class="flex-grow-1">
-                                    <div class="label"
-                                        style="font-size: 11px; text-transform: uppercase; color: #888;">Total Loan
-                                        Amount</div>
-                                    <div class="value" style="font-size: 22px; font-weight: 700; color: #FF5F00;">
-                                        P{{ number_format($overall['total_loans_amount'], 2) }}</div>
-                                    <div class="sub" style="font-size: 11px; color: #888;">
-                                        {{ number_format($overall['total_loans']) }} loans in range</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Total Collected Card -->
-                        <div class="col-xl-4 col-md-6 mb-3">
-                            <div class="dashboard-card p-3 d-flex align-items-center"
-                                style="border-top-color: #28a745; min-height: 110px;">
-                                <div class="bg-light p-3 rounded-circle mr-3"
-                                    style="color: #28a745; font-size: 24px; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center;">
-                                    <i class="fas fa-check-circle"></i>
-                                </div>
-                                <div class="flex-grow-1">
-                                    <div class="label"
-                                        style="font-size: 11px; text-transform: uppercase; color: #888;">Total Collected
-                                    </div>
-                                    <div class="value" style="font-size: 22px; font-weight: 700; color: #28a745;">
-                                        P{{ number_format($overall['total_collected'], 2) }}</div>
-                                    <div class="sub" style="font-size: 11px; color: #888;">From daily collections
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Collectibles Card -->
-                        <div class="col-xl-4 col-md-6 mb-3">
-                            <div class="dashboard-card p-3 d-flex align-items-center"
-                                style="border-top-color: #007bff; min-height: 110px;">
-                                <div class="bg-light p-3 rounded-circle mr-3"
-                                    style="color: #007bff; font-size: 24px; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center;">
-                                    <i class="fas fa-file-invoice-dollar"></i>
-                                </div>
-                                <div class="flex-grow-1">
-                                    <div class="label"
-                                        style="font-size: 11px; text-transform: uppercase; color: #888;">Collectibles
-                                    </div>
-                                    <div class="value" style="font-size: 22px; font-weight: 700; color: #007bff;">
-                                        P{{ number_format($overall['total_collectibles'], 2) }}</div>
-                                    <div class="sub" style="font-size: 11px; color: #888;">Expected for selected
-                                        range</div>
-                                </div>
-                            </div>
-                        </div>
-
-
-                    </div>
 
                     <div class="row mt-4">
                         <div class="col-12">

@@ -17,26 +17,6 @@ class ManagementDashboardController extends Controller
             return redirect('/login')->with('error', 'Please login first');
         }
 
-        $from = $request->query('from');
-        $to = $request->query('to');
-        $selectedArea = $request->query('area');
-
-        $isFiltered = $from
-            && $to
-            && Carbon::hasFormat($from, 'Y-m-d')
-            && Carbon::hasFormat($to, 'Y-m-d');
-
-        $displayFrom = $isFiltered ? $from : null;
-        $displayTo = $isFiltered ? $to : null;
-        $fromDateTime = $isFiltered ? Carbon::parse($from)->startOfDay() : null;
-        $toDateTime = $isFiltered ? Carbon::parse($to)->endOfDay() : null;
-
-        $filteredLocation = null;
-        $filteredAreaName = null;
-        if ($selectedArea && str_contains($selectedArea, '|')) {
-            [$filteredLocation, $filteredAreaName] = explode('|', $selectedArea);
-        }
-
         $areas = DB::table('areas')
             ->select('location_name', 'areas_name')
             ->groupBy('location_name', 'areas_name')
@@ -50,7 +30,6 @@ class ManagementDashboardController extends Controller
         $loanByArea = DB::table('clients_loans as cl')
             ->join('clients as c', 'cl.client_id', '=', 'c.id')
             ->join('areas as a', 'c.area_id', '=', 'a.id')
-            ->when($isFiltered, fn($query) => $query->whereBetween('cl.loan_from', [$from, $to]))
             ->selectRaw('a.location_name, a.areas_name,
                 COUNT(*) as total_loans,
                 COUNT(DISTINCT cl.client_id) as unique_clients,
@@ -66,7 +45,6 @@ class ManagementDashboardController extends Controller
 
         $paymentByArea = DB::table('clients_payments as cp')
             ->join('areas as a', 'cp.client_area', '=', 'a.id')
-            ->when($isFiltered, fn($query) => $query->whereBetween('cp.due_date', [$from, $to]))
             ->selectRaw('a.location_name, a.areas_name, SUM(cp.daily) as total_collectibles, SUM(CASE WHEN cp.is_collected = 1 THEN cp.collection ELSE 0 END) as total_collected, COUNT(*) as payment_count')
             ->groupBy('a.location_name', 'a.areas_name')
             ->get()
@@ -74,7 +52,6 @@ class ManagementDashboardController extends Controller
 
         $newClientsByArea = DB::table('clients as c')
             ->join('areas as a', 'c.area_id', '=', 'a.id')
-            ->when($isFiltered, fn($query) => $query->whereBetween('c.created_at', [$fromDateTime, $toDateTime]))
             ->selectRaw('a.location_name, a.areas_name, COUNT(*) as new_clients')
             ->groupBy('a.location_name', 'a.areas_name')
             ->get()
@@ -130,76 +107,9 @@ class ManagementDashboardController extends Controller
             })
             ->values();
 
-        // Create filtered sets for dashboard cards and charts
-        $dashboardAreaSummaries = $areaSummaries;
-        if ($filteredLocation && $filteredAreaName) {
-            $dashboardAreaSummaries = $areaSummaries->filter(function ($area) use ($filteredLocation, $filteredAreaName) {
-                return $area->location_name === $filteredLocation && $area->areas_name === $filteredAreaName;
-            });
-        }
-
-        $dashboardLocationSummaries = $dashboardAreaSummaries
-            ->groupBy('location_name')
-            ->map(function ($group, $location) {
-                return (object) [
-                    'location_name' => $location,
-                    'total_clients' => $group->sum('total_clients'),
-                    'new_clients' => $group->sum('new_clients'),
-                    'total_loans' => $group->sum('total_loans'),
-                    'new_loan_count' => $group->sum('new_loan_count'),
-                    'renewal_loan_count' => $group->sum('renewal_loan_count'),
-                    'total_loans_amount' => $group->sum('total_loans_amount'),
-                    'total_balance' => $group->sum('total_balance'),
-                    'total_lapsed_balance' => $group->sum('total_lapsed_balance'),
-                    'total_active_balance' => $group->sum('total_active_balance'),
-                    'total_collectibles' => $group->sum('total_collectibles'),
-                    'total_collected' => $group->sum('total_collected'),
-                ];
-            })
-            ->values();
-
-        $overall = [
-            'locations' => $dashboardLocationSummaries->count(),
-            'areas' => $dashboardAreaSummaries->count(),
-            'total_clients' => (int) $dashboardAreaSummaries->sum('total_clients'),
-            'new_clients' => (int) $dashboardAreaSummaries->sum('new_clients'),
-            'total_loans' => (int) $dashboardAreaSummaries->sum('total_loans'),
-            'total_loans_amount' => (float) $dashboardAreaSummaries->sum('total_loans_amount'),
-            'total_balance' => (float) $dashboardAreaSummaries->sum('total_balance'),
-            'total_lapsed_balance' => (float) $dashboardAreaSummaries->sum('total_lapsed_balance'),
-            'total_active_balance' => (float) $dashboardAreaSummaries->sum('total_active_balance'),
-            'total_collectibles' => (float) $dashboardAreaSummaries->sum('total_collectibles'),
-            'total_collected' => (float) $dashboardAreaSummaries->sum('total_collected'),
-        ];
-
-        $fcDayCollections = DB::table('clients_payments as cp')
-            ->leftJoin('collectors as col', 'cp.collected_by', '=', 'col.id')
-            ->leftJoin('areas as a', 'cp.client_area', '=', 'a.id')
-            ->when($isFiltered, fn($query) => $query->whereBetween('cp.due_date', [$from, $to]))
-            ->when($filteredLocation && $filteredAreaName, fn($query) => $query->where('a.location_name', $filteredLocation)->where('a.areas_name', $filteredAreaName))
-            ->selectRaw('
-                COALESCE(col.fullname, "N/A") as fc_name,
-                cp.due_date,
-                SUM(CASE WHEN cp.is_collected = 1 THEN cp.collection ELSE 0 END) as total_collected,
-                SUM(cp.daily) as total_collectibles
-            ')
-            ->groupBy('col.fullname', 'cp.due_date')
-            ->orderBy('cp.due_date', 'desc')
-            ->orderBy('fc_name')
-            ->get();
-
         return view('management.dashboard.index', compact(
-            'from',
-            'to',
-            'displayFrom',
-            'displayTo',
-            'isFiltered',
-            'overall',
             'areaSummaries',
-            'locationSummaries',
-            'fcDayCollections',
-            'areas',
-            'selectedArea'
+            'locationSummaries'
         ));
     }
 }
