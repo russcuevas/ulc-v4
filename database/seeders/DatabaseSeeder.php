@@ -14,10 +14,10 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             ManagementTableSeeder::class,
-            // AdminsTableSeeder::class,
-            // SecretaryTableSeeder::class,
-            // CollectorsTableSeeder::class,
-            // AreasTableSeeder::class,
+            AdminsTableSeeder::class,
+            SecretaryTableSeeder::class,
+            CollectorsTableSeeder::class,
+            AreasTableSeeder::class,
             // ClientsTableSeeder::class,
             // ClientsLoansTableSeeder::class,
             // ClientsPaymentsTableSeeder::class

@@ -17,7 +17,7 @@ class ManagementTableSeeder extends Seeder
     {
         Management::create([
             'fullname' => 'Management',
-            'email' => 'managementaccount@gmail.com',
+            'email' => 'micro@gmail.com',
             'password' => Hash::make('123456789'),
             'phone' => null,
             'gender' => null,

@@ -380,10 +380,65 @@ class ManagementAreaController extends Controller
 
         $grandTotal = $report->sum('total_collection');
 
+        // Fetch detailed payment records for the selected date
+        $hasSavingsAmount = \Illuminate\Support\Facades\Schema::hasColumn('clients_payments', 'savings_amount');
+
+        $selectFields = [
+            'a.location_name',
+            'a.areas_name',
+            'a.id as area_id',
+            'c.fullname as client_name',
+            'cp.reference_number',
+            'cp.daily',
+            'cp.collection',
+            'cp.type',
+            'cp.is_collected',
+            'assigned_col.fullname as assigned_collector_name',
+            'col.fullname as collector_name'
+        ];
+
+        if ($hasSavingsAmount) {
+            $selectFields[] = 'cp.savings_amount';
+        } else {
+            $selectFields[] = DB::raw('0.00 as savings_amount');
+        }
+
+        $paymentDetails = DB::table('clients_payments as cp')
+            ->join('areas as a', 'cp.client_area', '=', 'a.id')
+            ->join('clients as c', 'cp.client_id', '=', 'c.id')
+            ->leftJoin('collectors as assigned_col', 'a.collector_id', '=', 'assigned_col.id')
+            ->leftJoin('collectors as col', 'cp.collected_by', '=', 'col.id')
+            ->whereDate('cp.due_date', $date)
+            ->select($selectFields)
+            ->orderBy('a.location_name')
+            ->orderBy('a.areas_name')
+            ->orderBy('c.fullname')
+            ->get();
+
+        // Group payments by location, and then by area
+        $breakdownByLocation = $paymentDetails->groupBy('location_name')->map(function ($locPayments) {
+            return $locPayments->groupBy('areas_name')->map(function ($areaPayments) {
+                $first = $areaPayments->first();
+                $totalCollectibles = $areaPayments->sum('daily');
+                $totalCollected = $areaPayments->sum(function ($p) {
+                    return $p->is_collected == 1 ? $p->collection : 0.0;
+                });
+
+                return (object)[
+                    'area_name' => $first->areas_name,
+                    'assigned_collector' => $first->assigned_collector_name,
+                    'total_collectibles' => $totalCollectibles,
+                    'total_collected' => $totalCollected,
+                    'payments' => $areaPayments
+                ];
+            });
+        });
+
         return view('management.collection_report', [
             'report' => $report,
             'selectedDate' => $date,
-            'grandTotal' => $grandTotal
+            'grandTotal' => $grandTotal,
+            'breakdownByLocation' => $breakdownByLocation
         ]);
     }
 
