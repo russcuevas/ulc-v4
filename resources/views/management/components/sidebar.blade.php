@@ -56,6 +56,14 @@
                     </a>
                 </li>
 
+                <li class="nav-item">
+                    <a href="{{ route('management.collection.report.page') }}"
+                        class="nav-link {{ request()->routeIs('management.collection.report.page') ? 'active' : '' }}">
+                        <i class="nav-icon fas fa-file-invoice-dollar"></i>
+                        <p>Collection Report</p>
+                    </a>
+                </li>
+
             </ul>
 
             <!-- Logout -->

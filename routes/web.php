@@ -266,6 +266,10 @@ Route::middleware('role:management')->prefix('management')->name('management.')-
     Route::get('/collections/print/{refNo}', [ManagementAreaController::class, 'ManagementPrintCollection'])
         ->name('collections.print');
 
+    // COLLECTION REPORT
+    Route::get('/collection-report', [ManagementAreaController::class, 'ManagementCollectionReportPage'])
+        ->name('collection.report.page');
+
 });
 
 // Notifications page (shared)

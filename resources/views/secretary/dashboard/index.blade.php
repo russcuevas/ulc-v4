@@ -73,7 +73,7 @@
                 <div class="container-fluid">
                     <div class="row mb-2 align-items-center">
                         <div class="col-sm-6">
-                            <h1 class="m-0">Manila Area</h1>
+                            <h1 class="m-0">{{ $locationName ?? 'Manila Area' }}</h1>
                         </div>
                         <div class="col-sm-6 text-sm-right">
                             <p class="m-0"><strong>Showing:</strong>

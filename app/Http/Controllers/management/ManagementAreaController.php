@@ -343,4 +343,48 @@ class ManagementAreaController extends Controller
         ]);
     }
 
+    public function ManagementCollectionReportPage(Request $request)
+    {
+        $management = Session::get('user');
+        if (!$management) {
+            return redirect('/login')->with('error', 'Please login first');
+        }
+
+        $date = $request->input('date', \Carbon\Carbon::today()->toDateString());
+
+        // Get all unique location names ordered alphabetically
+        $allLocations = DB::table('areas')
+            ->select('location_name')
+            ->groupBy('location_name')
+            ->orderBy('location_name')
+            ->pluck('location_name');
+
+        // Sum collections for each location for the selected date
+        $collectionsQuery = DB::table('clients_payments as cp')
+            ->join('areas as a', 'cp.client_area', '=', 'a.id')
+            ->whereDate('cp.due_date', $date)
+            ->where('cp.is_collected', 1)
+            ->select('a.location_name', DB::raw('SUM(cp.collection) as total_collection'))
+            ->groupBy('a.location_name')
+            ->get()
+            ->keyBy('location_name');
+
+        // Map the locations to structure the final collection report
+        $report = $allLocations->map(function ($location) use ($collectionsQuery) {
+            $total = isset($collectionsQuery[$location]) ? (float) $collectionsQuery[$location]->total_collection : 0.0;
+            return (object) [
+                'location_name' => $location,
+                'total_collection' => $total
+            ];
+        });
+
+        $grandTotal = $report->sum('total_collection');
+
+        return view('management.collection_report', [
+            'report' => $report,
+            'selectedDate' => $date,
+            'grandTotal' => $grandTotal
+        ]);
+    }
+
 }

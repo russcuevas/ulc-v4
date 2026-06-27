@@ -89,6 +89,8 @@ class SecretaryDashboardController extends Controller
             ];
         });
 
-        return view('secretary.dashboard.index', compact('areaSummaries', 'from', 'to', 'showAllTime'));
+        $locationName = $areas->first()->location_name ?? 'Manila Area';
+
+        return view('secretary.dashboard.index', compact('areaSummaries', 'from', 'to', 'showAllTime', 'locationName'));
     }
 }
