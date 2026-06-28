@@ -466,15 +466,22 @@
 
                         <!-- Chat Area -->
                         <div class="chat-main" id="chat-pane-active" style="display: none;">
-                            <div class="chat-header">
+                            <div class="chat-header d-flex align-items-center justify-content-between">
                                 <div>
                                     <h3 class="chat-header-title" id="active-client-name">Loading...</h3>
                                     <span class="chat-header-subtitle" id="active-client-phone">Loading...</span>
                                 </div>
-                                <span class="badge bg-secondary text-capitalize" id="staff-identity-badge"
-                                    style="font-size: 11px;">
-                                    Scope: {{ $role }}
-                                </span>
+                                <div class="d-flex align-items-center gap-2">
+                                    <!-- Clear Chat Button -->
+                                    <button type="button" class="btn btn-sm btn-outline-danger" id="clear-chat-history"
+                                        style="border-radius: 8px; font-size: 11px; font-weight: 600; padding: 6px 12px; display: none;">
+                                        <i class="fas fa-trash-alt me-1"></i> Clear Chat
+                                    </button>
+                                    <span class="badge bg-secondary text-capitalize" id="staff-identity-badge"
+                                        style="font-size: 11px;">
+                                        Scope: {{ $role }}
+                                    </span>
+                                </div>
                             </div>
 
                             <div class="chat-messages-container" id="chat-messages-box">
@@ -646,6 +653,7 @@
 
                 $('#active-client-name').text(clientName);
                 $('#active-client-phone').text(`Phone: ${clientPhone} | Location: ${locationName} - [${areasName}]`);
+                $('#clear-chat-history').show();
 
                 loadMessages(convoId, true);
 
@@ -694,6 +702,30 @@
             // Search Filter input trigger
             $('#chat-search').on('input', function() {
                 renderConversationsList();
+            });
+
+            // Clear Chat History Handler
+            $(document).on('click', '#clear-chat-history', function() {
+                if (!currentConversationId) return;
+
+                if (confirm('Sigurado ka ba na nais mong i-clear ang chat history na ito? Hindi na ito maibabalik.')) {
+                    $.ajax({
+                        url: "{{ route('api.chat.clear') }}",
+                        type: "POST",
+                        data: {
+                            _token: "{{ csrf_token() }}",
+                            conversation_id: currentConversationId
+                        },
+                        success: function(response) {
+                            notyf.success(response.message || 'Chat history cleared.');
+                            loadMessages(currentConversationId, true); // Refresh pane
+                        },
+                        error: function(xhr) {
+                            const errorMsg = xhr.responseJSON ? xhr.responseJSON.message : "Failed to clear chat.";
+                            notyf.error(errorMsg);
+                        }
+                    });
+                }
             });
 
             // Helper to escape HTML tags

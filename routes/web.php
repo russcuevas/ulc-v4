@@ -294,3 +294,4 @@ Route::post('/notifications/mark-all-read', [NotificationsController::class, 'ma
 Route::get('/api/chat/conversations', [ChatController::class, 'getConversations'])->name('api.chat.conversations');
 Route::get('/api/chat/messages/{conversationId}', [ChatController::class, 'getMessages'])->name('api.chat.messages');
 Route::post('/api/chat/send', [ChatController::class, 'sendMessage'])->name('api.chat.send');
+Route::post('/api/chat/clear', [ChatController::class, 'clearMessages'])->name('api.chat.clear');

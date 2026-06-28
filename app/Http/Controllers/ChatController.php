@@ -258,7 +258,7 @@ class ChatController extends Controller
     {
         $request->validate([
             'conversation_id' => 'nullable|integer',
-            'receiver_type' => 'required_without:conversation_id|string|in:admin,secretary,collector',
+            'receiver_type' => 'required_without:conversation_id|string|in:admin,secretary,collector,bot',
             'receiver_id' => 'required_without:conversation_id|integer',
             'message' => 'required|string|max:5000',
         ]);
@@ -302,6 +302,8 @@ class ChatController extends Controller
                     ->where('id', $client->area_id)
                     ->where('collector_id', $receiverId)
                     ->exists();
+            } elseif ($receiverType === 'bot') {
+                $recipientExists = ($receiverId === 0);
             } else {
                 return response()->json(['message' => 'Invalid staff receiver type.'], 400);
             }
@@ -357,14 +359,243 @@ class ChatController extends Controller
             'updated_at' => now(),
         ]);
 
-        // Update conversation last message timestamp
+        // Check if the recipient of the message is the AI bot
+        $convo = DB::table('chat_conversations')->where('id', $conversationId)->first();
+        if ($convo && $convo->staff_type === 'bot') {
+            // Process AI Bot answer
+            $botResponse = $this->getBotAnswer($user->id, $messageText);
+            
+            // Insert bot message
+            DB::table('chat_messages')->insert([
+                'conversation_id' => $conversationId,
+                'sender_type' => 'bot',
+                'sender_id' => 0,
+                'message' => $botResponse,
+                'is_read' => 1,
+                'created_at' => now()->addSecond(),
+                'updated_at' => now()->addSecond(),
+            ]);
+
+            // Update conversation last message timestamp
+            DB::table('chat_conversations')
+                ->where('id', $conversationId)
+                ->update([
+                    'last_message_at' => now()->addSecond(),
+                    'updated_at' => now()
+                ]);
+        } else {
+            // Update conversation last message timestamp
+            DB::table('chat_conversations')
+                ->where('id', $conversationId)
+                ->update([
+                    'last_message_at' => now(),
+                    'updated_at' => now()
+                ]);
+        }
+
+        return response()->json(['message' => 'Message sent successfully', 'conversation_id' => $conversationId]);
+    }
+
+    /**
+     * Process bot quick-query logic and return response in Tagalog.
+     */
+    private function getBotAnswer($clientId, $messageText)
+    {
+        $messageText = strtolower($messageText);
+
+        $client = DB::table('clients')->where('id', $clientId)->first();
+        $area = $client ? DB::table('areas')->where('id', $client->area_id)->first() : null;
+        $collector = $area ? DB::table('collectors')->where('id', $area->collector_id)->first() : null;
+        $secretary = $area ? DB::table('secretaries')->where('id', $area->secretary_id)->first() : null;
+
+        // Query 1: Payment Yesterday
+        if (strpos($messageText, 'kahapon') !== false) {
+            $yesterdayDate = now()->timezone('Asia/Manila')->subDay()->format('Y-m-d');
+            $yesterdayPayment = DB::table('clients_payments')
+                ->where('client_id', $clientId)
+                ->where('due_date', $yesterdayDate)
+                ->first();
+
+            $collectorName = $collector ? $collector->fullname : 'iyong Collector';
+
+            if ($yesterdayPayment) {
+                return "📅 **Natanggap ang iyong bayad kahapon (" . date('M d, Y', strtotime($yesterdayDate)) . "):**\n\n" .
+                    "* **Halaga:** P" . number_format($yesterdayPayment->collection, 2) . "\n" .
+                    "* **Payment Type:** " . ucfirst($yesterdayPayment->type ?? 'Daily') . "\n" .
+                    "* **Reference No:** " . $yesterdayPayment->reference_number . "\n" .
+                    "* **Kinolekta ni:** " . ($collector ? $collector->fullname : 'Collector') . "\n\n" .
+                    "Maraming salamat sa iyong maayos na pagbabayad! 👍";
+            } else {
+                return "❌ **Walang nakitang bayad kahapon (" . date('M d, Y', strtotime($yesterdayDate)) . "):**\n\n" .
+                    "Paumanhin, wala kaming nakikitang tala ng iyong bayad kahapon sa aming database.\n\n" .
+                    "Mangyaring makipag-ugnayan sa iyong Area Collector na si **" . $collectorName . "** kung ikaw ay nakapag-abot ng bayad upang mai-verify at mai-encode ito.";
+            }
+        }
+
+        // Query 2: Payment Today
+        if (strpos($messageText, 'ngayon') !== false) {
+            $todayDate = now()->timezone('Asia/Manila')->format('Y-m-d');
+            $todayPayment = DB::table('clients_payments')
+                ->where('client_id', $clientId)
+                ->where('due_date', $todayDate)
+                ->first();
+
+            $collectorName = $collector ? $collector->fullname : 'iyong Collector';
+
+            if ($todayPayment) {
+                return "💵 **Natanggap ang iyong bayad ngayong araw (" . date('M d, Y', strtotime($todayDate)) . "):**\n\n" .
+                    "* **Halaga:** P" . number_format($todayPayment->collection, 2) . "\n" .
+                    "* **Payment Type:** " . ucfirst($todayPayment->type ?? 'Daily') . "\n" .
+                    "* **Reference No:** " . $todayPayment->reference_number . "\n" .
+                    "* **Kinolekta ni:** " . ($collector ? $collector->fullname : 'Collector') . "\n\n" .
+                    "Maraming salamat! Naka-record na ito sa aming database.";
+            } else {
+                return "⌛ **Walang nakitang bayad ngayong araw (" . date('M d, Y', strtotime($todayDate)) . "):**\n\n" .
+                    "Wala pa kaming natatanggap na bayad para sa araw na ito sa system.\n\n" .
+                    "Kung kababayad mo lamang sa iyong collector na si **" . $collectorName . "**, maaaring hindi pa ito nai-encode sa portal. Mangyaring mag-antay ng ilang sandali o i-refresh ang iyong page mamaya.";
+            }
+        }
+
+        // Query 3: Remaining Balance
+        if (strpos($messageText, 'balanse') !== false) {
+            $loans = DB::table('clients_loans')->where('client_id', $clientId)->get();
+            $totalBalance = 0;
+            $loanLines = "";
+
+            foreach ($loans as $loan) {
+                $totalPaid = DB::table('clients_payments')
+                    ->where('client_loans_id', $loan->id)
+                    ->sum('collection');
+                $balance = max(0, $loan->loan_amount - $totalPaid);
+                
+                $statusText = $loan->status;
+                if ($balance <= 0) {
+                    $statusText = 'paid';
+                }
+                
+                if ($statusText === 'unpaid' || $statusText === 'active' || $statusText === 'lapsed') {
+                    $totalBalance += $balance;
+                    $loanLines .= "🔹 **Loan Term:** " . date('M d, Y', strtotime($loan->loan_from)) . " hanggang " . date('M d, Y', strtotime($loan->loan_to)) . "\n" .
+                                  "   * **Balanse:** P" . number_format($balance, 2) . "\n" .
+                                  "   * **Status:** " . ucfirst($statusText) . "\n\n";
+                }
+            }
+
+            if ($totalBalance > 0) {
+                return "📊 **Iyong mga Aktibong Balanse (Outstanding Dues):**\n\n" .
+                    $loanLines .
+                    "💵 **Kabuong Natitirang Balanse:** P" . number_format($totalBalance, 2) . "\n\n" .
+                    "Siguraduhing magbayad sa tamang oras para maiwasan ang lapsed status. Salamat!";
+            } else {
+                return "🎉 **Balanse Status:**\n\n" .
+                    "Sa kasalukuyan, wala kang outstanding o aktibong loan balance! Lahat ng iyong naunang loans ay ganap nang bayad o settled na. Maraming salamat sa iyong magandang record!";
+            }
+        }
+
+        // Query 4: Total Savings
+        if (strpos($messageText, 'naipon') !== false || strpos($messageText, 'savings') !== false) {
+            $isFC = $area && stripos($area->location_name ?? '', 'Financial Counselor') !== false;
+            if (!$isFC) {
+                return "❌ **Savings Status:**\n\nAng programang Savings ay magagamit lamang ng mga kliyente sa ilalim ng **Financial Counselor** area. Ang iyong kasalukuyang area ay hindi sakop ng savings program.";
+            }
+
+            $loans = DB::table('clients_loans')->where('client_id', $clientId)->get();
+            $totalSavings = 0;
+
+            foreach ($loans as $loan) {
+                $statusText = $loan->status;
+                $totalPaid = DB::table('clients_payments')
+                    ->where('client_loans_id', $loan->id)
+                    ->sum('collection');
+                $balance = max(0, $loan->loan_amount - $totalPaid);
+                if ($balance <= 0) {
+                    $statusText = 'paid';
+                }
+                
+                if ($statusText === 'unpaid' || $statusText === 'active' || $statusText === 'lapsed') {
+                    $totalSavings += $loan->savings_balance;
+                }
+            }
+
+            return "🏦 **Iyong Naipon (Savings):**\n\n" .
+                "Ang iyong kabuuang naipon na Savings para sa iyong mga aktibong loan ay **P" . number_format($totalSavings, 2) . "**.\n\n" .
+                "Ang savings na ito ay maiipon at maaari mong magamit pagkatapos ng iyong loan term.";
+        }
+
+        // Query 5: Assigned Agents
+        if (strpos($messageText, 'collector') !== false || strpos($messageText, 'secretary') !== false || strpos($messageText, 'assigned') !== false || strpos($messageText, 'sino') !== false) {
+            $collectorName = $collector ? $collector->fullname : 'N/A';
+            $collectorPhone = $collector ? ($collector->phone ?? 'N/A') : 'N/A';
+            $secretaryName = $secretary ? $secretary->fullname : 'N/A';
+            $areaName = $area ? ($area->location_name . " - [" . $area->areas_name . "]") : 'N/A';
+
+            return "👤 **Iyong mga Assigned Staff / Agents:**\n\n" .
+                "📍 **Iyong Area:** " . $areaName . "\n\n" .
+                "🚚 **Area Collector:** " . $collectorName . " (" . $collectorPhone . ")\n" .
+                "💼 **Office Secretary:** " . $secretaryName . "\n\n" .
+                "Kung mayroon kang katanungan tungkol sa koleksyon o nais magpa-encode ng bayad, direktang makipag-ugnayan sa iyong Collector.";
+        }
+
+        // Default Helpdesk Message
+        return "Kamusta! Ako si **Ultra Support**, ang iyong AI Virtual Assistant ng ULC System. 👋\n\n" .
+            "Narito ako upang sagutin ang iyong mga tanong tungkol sa iyong account.\n\n" .
+            "Mangyaring piliin ang isa sa mga tanong sa ibaba o sumulat ng iyong katanungan.";
+    }
+
+    /**
+     * Clear all messages in a conversation.
+     */
+    public function clearMessages(Request $request)
+    {
+        $request->validate([
+            'conversation_id' => 'required|integer',
+        ]);
+
+        $user = Session::get('user');
+        $role = Session::get('role');
+
+        if (!$user || !$role) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $conversationId = $request->input('conversation_id');
+
+        // Query conversation and validate ownership
+        $convo = DB::table('chat_conversations')->where('id', $conversationId)->first();
+        if (!$convo) {
+            return response()->json(['message' => 'Conversation not found'], 404);
+        }
+
+        // Verify access rights (only client or staff involved in this chat can clear it)
+        if ($role === 'client') {
+            if ($convo->client_id !== $user->id) {
+                return response()->json(['message' => 'Forbidden'], 403);
+            }
+        } elseif ($role === 'secretary') {
+            if ($convo->staff_type !== 'secretary' || $convo->staff_id !== $user->id) {
+                return response()->json(['message' => 'Forbidden'], 403);
+            }
+        } elseif ($role === 'collector') {
+            if ($convo->staff_type !== 'collector' || $convo->staff_id !== $user->id) {
+                return response()->json(['message' => 'Forbidden'], 403);
+            }
+        } elseif ($role === 'admin') {
+            if ($convo->staff_type !== 'admin') {
+                return response()->json(['message' => 'Forbidden'], 403);
+            }
+        }
+
+        // Delete all messages in the conversation
+        DB::table('chat_messages')->where('conversation_id', $conversationId)->delete();
+
+        // Update conversation last_message_at
         DB::table('chat_conversations')
             ->where('id', $conversationId)
             ->update([
-                'last_message_at' => now(),
+                'last_message_at' => null,
                 'updated_at' => now()
             ]);
 
-        return response()->json(['message' => 'Message sent successfully', 'conversation_id' => $conversationId]);
+        return response()->json(['message' => 'Chat history cleared successfully']);
     }
 }

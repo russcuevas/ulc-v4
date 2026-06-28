@@ -29,7 +29,8 @@
         }
 
         /* Ambient background glow effects (disabled on light theme) */
-        .ambient-glow-1, .ambient-glow-2 {
+        .ambient-glow-1,
+        .ambient-glow-2 {
             display: none;
         }
 
@@ -460,11 +461,26 @@
 
         @media (max-width: 768px) {
             .chat-sidebar {
-                display: none;
+                position: absolute;
+                top: 0;
+                left: -100%;
+                bottom: 0;
+                width: 260px;
+                background: #ffffff;
+                z-index: 999;
+                transition: left 0.25s ease;
+                display: flex !important;
+                border-right: 1px solid #e2e8f0;
+                box-shadow: 5px 0 15px rgba(0, 0, 0, 0.05);
+            }
+
+            .chat-sidebar.active {
+                left: 0;
             }
 
             .chat-layout {
                 height: calc(100vh - 140px);
+                position: relative;
             }
         }
     </style>
@@ -539,27 +555,38 @@
                 <div class="chat-sidebar">
                     <div class="chat-sidebar-header">Support Agents</div>
                     <div class="chat-agent-list" id="agents-list">
-                        @if($collector)
-                            <div class="chat-agent-item active" data-staff-type="collector" data-staff-id="{{ $collector->id }}" data-staff-name="Collector: {{ $collector->fullname }}">
-                                <div class="agent-avatar">CO</div>
+                        <!-- AI Support Bot (Ultra Support) -->
+                        <div class="chat-agent-item active" data-staff-type="bot" data-staff-id="0"
+                            data-staff-name="Ultra Support (AI Bot)">
+                            <div class="agent-info">
+                                <div class="agent-name" style="font-weight: 700;">Ultra Support (AI Bot)</div>
+                                <div class="agent-status" style="color: #FF5F00;">24/7 Virtual Assistant</div>
+                            </div>
+                        </div>
+
+                        @if ($collector)
+                            <div class="chat-agent-item" data-staff-type="collector"
+                                data-staff-id="{{ $collector->id }}"
+                                data-staff-name="Collector: {{ $collector->fullname }}">
                                 <div class="agent-info">
                                     <div class="agent-name">Collector: {{ $collector->fullname }}</div>
                                     <div class="agent-status">Area Support</div>
                                 </div>
                             </div>
                         @endif
-                        @if($secretary)
-                            <div class="chat-agent-item {{ !$collector ? 'active' : '' }}" data-staff-type="secretary" data-staff-id="{{ $secretary->id }}" data-staff-name="Secretary: {{ $secretary->fullname }}">
-                                <div class="agent-avatar">OS</div>
+                        @if ($secretary)
+                            <div class="chat-agent-item" data-staff-type="secretary"
+                                data-staff-id="{{ $secretary->id }}"
+                                data-staff-name="Secretary: {{ $secretary->fullname }}">
                                 <div class="agent-info">
                                     <div class="agent-name">Secretary: {{ $secretary->fullname }}</div>
                                     <div class="agent-status">Office Support</div>
                                 </div>
                             </div>
                         @endif
-                        @if($admin)
-                            <div class="chat-agent-item {{ (!$collector && !$secretary) ? 'active' : '' }}" data-staff-type="admin" data-staff-id="{{ $admin->id }}" data-staff-name="System Admin">
-                                <div class="agent-avatar">AD</div>
+                        @if ($admin)
+                            <div class="chat-agent-item" data-staff-type="admin" data-staff-id="{{ $admin->id }}"
+                                data-staff-name="System Admin">
                                 <div class="agent-info">
                                     <div class="agent-name">System Support (Admin)</div>
                                     <div class="agent-status">Helpdesk Support</div>
@@ -571,11 +598,22 @@
 
                 <!-- Chat Main Pane -->
                 <div class="chat-main">
-                    <div class="chat-main-header">
-                        <div class="agent-avatar" id="active-agent-avatar">CO</div>
+                    <div class="chat-main-header d-flex align-items-center justify-content-between">
                         <div>
-                            <div class="agent-name" id="active-agent-name" style="font-size: 16px;">Support Agent</div>
-                            <div class="agent-status" id="active-agent-status">Active Support Agent</div>
+                            <div class="agent-name" id="active-agent-name" style="font-size: 16px;">Ultra Support (AI
+                                Bot)</div>
+                            <div class="agent-status" id="active-agent-status">24/7 Virtual Assistant</div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <!-- Clear Chat Button -->
+                            <button type="button" class="btn btn-sm btn-outline-danger" id="clear-chat-history"
+                                style="border-radius: 8px; font-size: 12px; font-weight: 600; padding: 6px 12px; display: none;">
+                                <i class="fas fa-trash-alt me-1"></i> Clear Chat
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-warning d-md-none" id="toggle-chat-agents"
+                                style="border-radius: 8px; font-size: 12px; font-weight: 600; border-color: #FF5F00 !important; color: #FF5F00 !important; padding: 6px 12px;">
+                                <i class="fas fa-comments me-1"></i> Chats
+                            </button>
                         </div>
                     </div>
 
@@ -586,6 +624,45 @@
 
                     <!-- Chat Input form -->
                     <div class="chat-input-area">
+                        <!-- AI Quick Questions Section -->
+                        <div id="ai-quick-questions" style="display: none; padding-bottom: 12px;">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="text-muted small" style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Mga Pwedeng Itanong sa AI:</span>
+                                <button type="button" class="btn btn-link btn-sm p-0 text-warning text-decoration-none" id="toggle-quick-questions" style="font-size: 11px; font-weight: 600;">
+                                    <i class="fas fa-chevron-up me-1"></i><span>Itago</span>
+                                </button>
+                            </div>
+                            <div id="ai-questions-wrapper" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                <button type="button" class="btn btn-sm btn-outline-warning bot-question-btn"
+                                    data-question="Natanggap ba ang pinadala kong bayad kahapon?"
+                                    style="border-radius: 20px; font-size: 11px; font-weight: 600; padding: 6px 12px;">Natanggap
+                                    ba ang bayad ko kahapon? 📅</button>
+                                <button type="button" class="btn btn-sm btn-outline-warning bot-question-btn"
+                                    data-question="Natanggap ba ang bayad ko ngayon?"
+                                    style="border-radius: 20px; font-size: 11px; font-weight: 600; padding: 6px 12px;">Natanggap
+                                    ba ang bayad ko ngayon? 💵</button>
+                                <button type="button" class="btn btn-sm btn-outline-warning bot-question-btn"
+                                    data-question="Magkano nalang ang balanse ko?"
+                                    style="border-radius: 20px; font-size: 11px; font-weight: 600; padding: 6px 12px;">Magkano
+                                    nalang ang balanse ko? 📊</button>
+                                
+                                @php
+                                    $isFC = $area && stripos($area->location_name ?? '', 'Financial Counselor') !== false;
+                                @endphp
+                                @if($isFC)
+                                    <button type="button" class="btn btn-sm btn-outline-warning bot-question-btn"
+                                        data-question="Magkano na ang aking naipon (Savings)?"
+                                        style="border-radius: 20px; font-size: 11px; font-weight: 600; padding: 6px 12px;">Magkano
+                                        ang naipon ko (Savings)? 🏦</button>
+                                @endif
+
+                                <button type="button" class="btn btn-sm btn-outline-warning bot-question-btn"
+                                    data-question="Sino ang aking collector at secretary?"
+                                    style="border-radius: 20px; font-size: 11px; font-weight: 600; padding: 6px 12px;">Sino
+                                    ang collector ko? 👤</button>
+                            </div>
+                        </div>
+
                         <form class="chat-input-form" id="chat-form">
                             <input type="text" id="chat-input-field" class="form-control chat-input"
                                 placeholder="Type your message here..." autocomplete="off">
@@ -673,7 +750,10 @@
             // AJAX Chat logic
             const notyf = new Notyf({
                 duration: 5000,
-                position: { x: 'right', y: 'top' }
+                position: {
+                    x: 'right',
+                    y: 'top'
+                }
             });
 
             let conversations = [];
@@ -701,27 +781,48 @@
                 });
             }
 
+            function formatBotMessage(text) {
+                let formatted = escapeHtml(text)
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/^\*\s(.*)$/gm, '• $1')
+                    .replace(/\n/g, '<br>');
+                return formatted;
+            }
+
             function selectAgent() {
                 const agent = getSelectedAgent();
                 if (!agent) return;
 
                 // Update active agent header details
                 $('#active-agent-name').text(agent.name);
-                $('#active-agent-avatar').text(agent.type.substring(0, 2).toUpperCase());
-                $('#active-agent-status').text('Messaging Session');
+
+                if (agent.type === 'bot') {
+                    $('#active-agent-status').text('Virtual Assistant');
+                    $('#ai-quick-questions').show();
+                } else {
+                    $('#active-agent-status').text('Messaging Session');
+                    $('#ai-quick-questions').hide();
+                }
 
                 // Find matching conversation
                 const match = conversations.find(c => c.staff_type === agent.type && c.staff_id === agent.id);
                 if (match) {
                     activeConversationId = match.id;
+                    $('#clear-chat-history').show();
                     loadMessages(match.id, true);
                     resetPoller(match.id);
                 } else {
                     activeConversationId = null;
+                    $('#clear-chat-history').hide();
+                    let placeholderText = `Send a message to start a secure chat with ${agent.name}.`;
+                    if (agent.type === 'bot') {
+                        placeholderText =
+                            `Click a question below or send a message to start a session with Ultra Support AI.`;
+                    }
                     $('#chat-messages-container').html(`
                         <div class="text-center text-muted small py-5">
                             <i class="fas fa-comment-dots fs-1 mb-2 text-secondary"></i>
-                            <p>Send a message to start a secure chat with ${agent.name}.</p>
+                            <p>${placeholderText}</p>
                         </div>
                     `);
                     if (pollingInterval) clearInterval(pollingInterval);
@@ -739,25 +840,39 @@
                         if (activeConversationId !== convoId) return;
 
                         const container = $('#chat-messages-container');
-                        
+
                         // Keep track of scroll position to prevent jumping unless autoscrolling
-                        const isAtBottom = container[0].scrollHeight - container.scrollTop() <= container.outerHeight() + 50;
+                        const isAtBottom = container[0].scrollHeight - container.scrollTop() <=
+                            container.outerHeight() + 50;
 
                         container.empty();
 
                         if (messages.length === 0) {
-                            container.html('<div class="text-center text-muted small py-4">No messages yet.</div>');
+                            container.html(
+                                '<div class="text-center text-muted small py-4">No messages yet.</div>'
+                            );
                             return;
                         }
 
                         messages.forEach(msg => {
                             const isOutgoing = msg.sender_type === 'client';
-                            const bubbleClass = isOutgoing ? 'message-outgoing' : 'message-incoming';
-                            const timeStr = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            const bubbleClass = isOutgoing ? 'message-outgoing' :
+                                'message-incoming';
+                            const timeStr = new Date(msg.created_at).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            });
+
+                            let parsedText = '';
+                            if (msg.sender_type === 'bot') {
+                                parsedText = formatBotMessage(msg.message);
+                            } else {
+                                parsedText = escapeHtml(msg.message);
+                            }
 
                             const bubbleHtml = `
                                 <div class="message-bubble ${bubbleClass}">
-                                    <div>${escapeHtml(msg.message)}</div>
+                                    <div>${parsedText}</div>
                                     <div class="message-time">${timeStr}</div>
                                 </div>
                             `;
@@ -778,11 +893,32 @@
                 }, 3000);
             }
 
+            // Click quick question button handler
+            $(document).on('click', '.bot-question-btn', function() {
+                const questionText = $(this).data('question');
+                $('#chat-input-field').val(questionText);
+                $('#chat-form').submit();
+            });
+
+            // Toggle Chat Agents Sidebar on Mobile
+            $(document).on('click', '#toggle-chat-agents', function(e) {
+                e.stopPropagation();
+                $('.chat-sidebar').toggleClass('active');
+            });
+
             // Click agent item handler
             $(document).on('click', '.chat-agent-item', function() {
                 $('.chat-agent-item').removeClass('active');
                 $(this).addClass('active');
+                $('.chat-sidebar').removeClass('active'); // Close mobile sidebar drawer
                 selectAgent();
+            });
+
+            // Close sidebar when clicking outside on mobile
+            $(document).on('click', function(e) {
+                if (!$(e.target).closest('.chat-sidebar').length && !$(e.target).closest('#toggle-chat-agents').length) {
+                    $('.chat-sidebar').removeClass('active');
+                }
             });
 
             // Submit form handler
@@ -812,21 +948,64 @@
                     data: postData,
                     success: function(response) {
                         $('#chat-input-field').val('');
-                        
+
                         // Reload conversations to register the new conversation ID if it was created
                         loadConversations(function() {
                             if (response.conversation_id) {
                                 activeConversationId = response.conversation_id;
+                                $('#clear-chat-history').show();
                                 resetPoller(activeConversationId);
                             }
                             loadMessages(activeConversationId, true);
                         });
                     },
                     error: function(xhr) {
-                        const errorMsg = xhr.responseJSON ? xhr.responseJSON.message : "Failed to send message.";
+                        const errorMsg = xhr.responseJSON ? xhr.responseJSON.message :
+                            "Failed to send message.";
                         notyf.error(errorMsg);
                     }
                 });
+            });
+
+            // Toggle quick questions visibility
+            $(document).on('click', '#toggle-quick-questions', function() {
+                const wrapper = $('#ai-questions-wrapper');
+                const icon = $(this).find('i');
+                const label = $(this).find('span');
+                
+                wrapper.slideToggle(200, function() {
+                    if (wrapper.is(':visible')) {
+                        icon.removeClass('fa-chevron-down').addClass('fa-chevron-up');
+                        label.text('Itago');
+                    } else {
+                        icon.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+                        label.text('Ipakita');
+                    }
+                });
+            });
+
+            // Clear Chat History Handler
+            $(document).on('click', '#clear-chat-history', function() {
+                if (!activeConversationId) return;
+
+                if (confirm('Sigurado ka ba na nais mong i-clear ang chat history na ito? Hindi na ito maibabalik.')) {
+                    $.ajax({
+                        url: "{{ route('api.chat.clear') }}",
+                        type: "POST",
+                        data: {
+                            _token: "{{ csrf_token() }}",
+                            conversation_id: activeConversationId
+                        },
+                        success: function(response) {
+                            notyf.success(response.message || 'Chat history cleared.');
+                            loadMessages(activeConversationId, true); // Refresh pane
+                        },
+                        error: function(xhr) {
+                            const errorMsg = xhr.responseJSON ? xhr.responseJSON.message : "Failed to clear chat.";
+                            notyf.error(errorMsg);
+                        }
+                    });
+                }
             });
 
             // Helper to escape HTML
