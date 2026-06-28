@@ -32,7 +32,27 @@ class ClientDashboardController extends Controller
         $loans = DB::table('clients_loans')
             ->where('client_id', $client->id)
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->get()
+            ->map(function ($loan) {
+                // Sum all collections in clients_payments for this loan, ignoring is_collected (1 or 0)
+                $totalPaid = DB::table('clients_payments')
+                    ->where('client_loans_id', $loan->id)
+                    ->sum('collection');
+
+                $loan->balance = max(0, $loan->loan_amount - $totalPaid);
+                
+                // If computed balance is fully settled, mark display status as paid
+                if ($loan->balance <= 0) {
+                    $loan->status = 'paid';
+                }
+
+                // Set savings to 0 if the loan is not active (paid or settled)
+                if ($loan->status === 'paid' || $loan->status === 'settled') {
+                    $loan->savings_balance = 0;
+                }
+
+                return $loan;
+            });
 
         // Fetch recent payments of client
         $payments = DB::table('clients_payments as cp')

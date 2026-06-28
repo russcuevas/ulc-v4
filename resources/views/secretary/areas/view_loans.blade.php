@@ -200,7 +200,7 @@
                                                     <td>₱{{ number_format($loan->loan_amount, 2) }}</td>
                                                     <td>₱{{ number_format($loan->balance, 2) }}</td>
                                                      @if (stripos($location_name, 'Financial Counselor') !== false)
-                                                         <td>₱{{ number_format($loan->savings_balance, 2) }}</td>
+                                                         <td>₱{{ number_format(($loan->status === 'paid' || $loan->status === 'settled') ? 0 : $loan->savings_balance, 2) }}</td>
                                                      @endif
                                                      <td>₱{{ number_format($loan->daily, 2) }}</td>
 
