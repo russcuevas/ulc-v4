@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>ULC Client Portal - Sign In</title>
+    <title>ULC Client Portal - Mag-sign In</title>
 
     <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap">
@@ -269,7 +269,7 @@
                     </div>
                     <div>
                         <h1 class="logo-text">ULC <span>Portal</span></h1>
-                        <p class="welcome-text">Sign in to view your account</p>
+                        <p class="welcome-text">Mag-sign in para makita ang iyong account</p>
                     </div>
                 </a>
             </div>
@@ -278,7 +278,7 @@
                 @csrf
 
                 <div class="input-group">
-                    <label>Phone Number</label>
+                    <label>Numero ng Telepono</label>
                     <div class="input-wrapper">
                         <input type="text" name="phone" class="input-control" placeholder="09123456789"
                             required autocomplete="tel" autofocus pattern="[0-9]{11}">
@@ -289,14 +289,14 @@
                 </div>
 
                 <button type="submit" class="submit-btn">
-                    <span>Access Portal</span>
+                    <span>Pumasok sa Portal</span>
                     <i class="fas fa-arrow-right"></i>
                 </button>
 
             </form>
 
-            <div class="help-text">
-                Please enter your registered phone number.
+            <div class="help-section help-text">
+                Mangyaring ilagay ang iyong rehistradong numero ng telepono.
             </div>
 
         </div>

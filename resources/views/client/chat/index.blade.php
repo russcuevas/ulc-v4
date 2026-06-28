@@ -642,6 +642,14 @@
                                     style="border-radius: 20px; font-size: 11px; font-weight: 600; padding: 6px 12px;">Natanggap
                                     ba ang bayad ko ngayon? 💵</button>
                                 <button type="button" class="btn btn-sm btn-outline-warning bot-question-btn"
+                                    data-question="Magkano ang hulog ko ngayong linggo?"
+                                    style="border-radius: 20px; font-size: 11px; font-weight: 600; padding: 6px 12px;">Magkano
+                                    ang hulog ko ngayong linggo? 📈</button>
+                                <button type="button" class="btn btn-sm btn-outline-warning bot-question-btn"
+                                    data-question="Magkano ang hulog ko nakaraang linggo?"
+                                    style="border-radius: 20px; font-size: 11px; font-weight: 600; padding: 6px 12px;">Magkano
+                                    ang hulog ko nakaraang linggo? 📉</button>
+                                <button type="button" class="btn btn-sm btn-outline-warning bot-question-btn"
                                     data-question="Magkano nalang ang balanse ko?"
                                     style="border-radius: 20px; font-size: 11px; font-weight: 600; padding: 6px 12px;">Magkano
                                     nalang ang balanse ko? 📊</button>

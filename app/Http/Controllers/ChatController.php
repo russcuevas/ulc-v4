@@ -408,6 +408,75 @@ class ChatController extends Controller
         $collector = $area ? DB::table('collectors')->where('id', $area->collector_id)->first() : null;
         $secretary = $area ? DB::table('secretaries')->where('id', $area->secretary_id)->first() : null;
 
+        // Query: Payments This Week (Must be checked before 'ngayon' to avoid conflict)
+        if (strpos($messageText, 'ngayong linggo') !== false || (strpos($messageText, 'linggo') !== false && strpos($messageText, 'ngayon') !== false)) {
+            $startOfWeek = now()->timezone('Asia/Manila')->startOfWeek()->format('Y-m-d');
+            $endOfWeek = now()->timezone('Asia/Manila')->endOfWeek()->format('Y-m-d');
+
+            $paymentsThisWeek = DB::table('clients_payments as cp')
+                ->leftJoin('collectors as col', 'cp.collected_by', '=', 'col.id')
+                ->where('cp.client_id', $clientId)
+                ->whereBetween('cp.due_date', [$startOfWeek, $endOfWeek])
+                ->select('cp.*', 'col.fullname as collected_by_name')
+                ->orderBy('cp.due_date', 'asc')
+                ->get();
+
+            $totalPaid = $paymentsThisWeek->sum('collection');
+
+            if ($paymentsThisWeek->count() > 0) {
+                $lines = "";
+                foreach ($paymentsThisWeek as $p) {
+                    $lines .= "🔹 **Petsa:** " . date('M d, Y', strtotime($p->due_date)) . "\n" .
+                              "   * **Halaga:** P" . number_format($p->collection, 2) . "\n" .
+                              "   * **Reference No:** " . $p->reference_number . "\n" .
+                              "   * **Kinolekta ni:** " . ($p->collected_by_name ?? 'Collector') . "\n\n";
+                }
+
+                return "📅 **Breakdown ng iyong mga hulog ngayong linggo (" . date('M d', strtotime($startOfWeek)) . " - " . date('M d, Y', strtotime($endOfWeek)) . "):**\n\n" .
+                    $lines .
+                    "💵 **Kabuong Hulog Ngayong Linggo:** P" . number_format($totalPaid, 2) . "\n\n" .
+                    "Salamat sa iyong patuloy na pagbabayad! 👍";
+            } else {
+                return "❌ **Walang nakitang hulog ngayong linggo (" . date('M d', strtotime($startOfWeek)) . " - " . date('M d, Y', strtotime($endOfWeek)) . "):**\n\n" .
+                    "Wala pa kaming natatanggap na tala ng iyong bayad para sa linggong ito sa aming system.\n\n" .
+                    "Kung ikaw ay may naibigay na bayad sa iyong Area Collector, mangyaring hintayin na ma-encode ito sa system.";
+            }
+        }
+
+        // Query: Payments Last Week (Must be checked before 'kahapon' or 'ngayon' to avoid conflict)
+        if (strpos($messageText, 'nakaraang linggo') !== false || strpos($messageText, 'nakalipas na linggo') !== false || (strpos($messageText, 'linggo') !== false && (strpos($messageText, 'nakaraan') !== false || strpos($messageText, 'nakalipas') !== false))) {
+            $startOfLastWeek = now()->timezone('Asia/Manila')->subWeek()->startOfWeek()->format('Y-m-d');
+            $endOfLastWeek = now()->timezone('Asia/Manila')->subWeek()->endOfWeek()->format('Y-m-d');
+
+            $paymentsLastWeek = DB::table('clients_payments as cp')
+                ->leftJoin('collectors as col', 'cp.collected_by', '=', 'col.id')
+                ->where('cp.client_id', $clientId)
+                ->whereBetween('cp.due_date', [$startOfLastWeek, $endOfLastWeek])
+                ->select('cp.*', 'col.fullname as collected_by_name')
+                ->orderBy('cp.due_date', 'asc')
+                ->get();
+
+            $totalPaid = $paymentsLastWeek->sum('collection');
+
+            if ($paymentsLastWeek->count() > 0) {
+                $lines = "";
+                foreach ($paymentsLastWeek as $p) {
+                    $lines .= "🔹 **Petsa:** " . date('M d, Y', strtotime($p->due_date)) . "\n" .
+                              "   * **Halaga:** P" . number_format($p->collection, 2) . "\n" .
+                              "   * **Reference No:** " . $p->reference_number . "\n" .
+                              "   * **Kinolekta ni:** " . ($p->collected_by_name ?? 'Collector') . "\n\n";
+                }
+
+                return "📅 **Breakdown ng iyong mga hulog nakaraang linggo (" . date('M d', strtotime($startOfLastWeek)) . " - " . date('M d, Y', strtotime($endOfLastWeek)) . "):**\n\n" .
+                    $lines .
+                    "💵 **Kabuong Hulog Nakaraang Linggo:** P" . number_format($totalPaid, 2) . "\n\n" .
+                    "Salamat sa iyong maayos na pagbabayad! 👍";
+            } else {
+                return "❌ **Walang nakitang hulog noong nakaraang linggo (" . date('M d', strtotime($startOfLastWeek)) . " - " . date('M d, Y', strtotime($endOfLastWeek)) . "):**\n\n" .
+                    "Wala kaming nakikitang tala ng iyong bayad para sa nakaraang linggo sa database.";
+            }
+        }
+
         // Query 1: Payment Yesterday
         if (strpos($messageText, 'kahapon') !== false) {
             $yesterdayDate = now()->timezone('Asia/Manila')->subDay()->format('Y-m-d');

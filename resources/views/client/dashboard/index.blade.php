@@ -29,7 +29,8 @@
         }
 
         /* Ambient background glow effects (disabled on light theme for clean look) */
-        .ambient-glow-1, .ambient-glow-2 {
+        .ambient-glow-1,
+        .ambient-glow-2 {
             display: none;
         }
 
@@ -863,10 +864,10 @@
                                 ${collectionFormatted}
                             </td>
                             ${isFC ? `
-                                                        <td class="text-end font-monospace text-success fw-bold">
-                                                            ${savingsFormatted}
-                                                        </td>
-                                                    ` : ''}
+                                                            <td class="text-end font-monospace text-success fw-bold">
+                                                                ${savingsFormatted}
+                                                            </td>
+                                                        ` : ''}
                         </tr>
                     `;
                 }
