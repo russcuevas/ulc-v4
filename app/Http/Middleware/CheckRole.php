@@ -17,11 +17,13 @@ class CheckRole
     public function handle($request, Closure $next, $role)
     {
         if (!Session::has('role')) {
-            return redirect('/login')->with('error', 'Please login first');
+            $redirect = ($role === 'client') ? route('client.login.page') : route('auth.login.page');
+            return redirect($redirect)->with('error', 'Please login first');
         }
 
         if (Session::get('role') !== $role) {
-            return redirect('/login')->with('error', 'Unauthorized');
+            $redirect = ($role === 'client') ? route('client.login.page') : route('auth.login.page');
+            return redirect($redirect)->with('error', 'Unauthorized');
         }
 
         return $next($request);

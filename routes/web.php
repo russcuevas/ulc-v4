@@ -10,6 +10,8 @@ use App\Http\Controllers\admin\AdminSecretaryController;
 use App\Http\Controllers\admin\area\AdminCollectionController;
 use App\Http\Controllers\admin\area\AdminManilaClientsController;
 use App\Http\Controllers\admin\area\AdminManilaController;
+use App\Http\Controllers\client\ClientAuthController;
+use App\Http\Controllers\client\ClientDashboardController;
 use App\Http\Controllers\collector\CollectorCollectionController;
 use App\Http\Controllers\collector\CollectorDashboardController;
 use App\Http\Controllers\NotificationsController;
@@ -40,9 +42,21 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+// ADMIN, SECRETARY, COLLECTOR ROUTES
 Route::get('/login', [AuthController::class, 'LoginPage'])->name('auth.login.page');
 Route::post('/login/request', [AuthController::class, 'LoginRequest'])->name('auth.login.request');
 Route::post('/logout', [AuthController::class, 'LogoutRequest'])->name('auth.logout.request');
+
+
+// CLIENT ROUTE
+Route::get('/client/login', [ClientAuthController::class, 'ClientLoginPage'])->name('client.login.page');
+Route::post('/client/login/request', [ClientAuthController::class, 'ClientLoginRequest'])->name('client.login.request');
+Route::post('/client/logout', [ClientAuthController::class, 'ClientLogoutRequest'])->name('client.logout.request');
+
+Route::middleware('role:client')->prefix('client')->name('client.')->group(function () {
+    Route::get('/dashboard', [ClientDashboardController::class, 'ClientDashboardPage'])->name('dashboard.page');
+    Route::get('/chat', [ClientDashboardController::class, 'ClientChatPage'])->name('chat.page');
+});
 
 // ADMIN ROUTES
 
@@ -269,7 +283,6 @@ Route::middleware('role:management')->prefix('management')->name('management.')-
     // COLLECTION REPORT
     Route::get('/collection-report', [ManagementAreaController::class, 'ManagementCollectionReportPage'])
         ->name('collection.report.page');
-
 });
 
 // Notifications page (shared)
