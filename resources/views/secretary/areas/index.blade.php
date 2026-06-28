@@ -98,10 +98,6 @@
                                     <h3 class="card-title" id="cardHeader">All Assigned Areas</h3>
                                     <div class="card-tools">
                                         <div class="d-flex align-items-center">
-                                            <a id="weeklyCollectionBtn" href="{{ $areas->first() ? route('secretary.areas.collections.weekly', ['location' => $areas->first()->location_name]) : '#' }}"
-                                                class="btn btn-success btn-sm mr-2{{ $areas->first() ? '' : ' disabled' }}">
-                                                <i class="fas fa-hand-holding"></i> Weekly Collection
-                                            </a>
                                             <button type="button" class="btn btn-sm btn-info" data-toggle="modal"
                                                 data-target="#printSalesModal">
                                                 <i class="fas fa-print"></i> Print Sales
@@ -114,7 +110,7 @@
                                         <div class="col-md-4">
                                             <div class="form-group mb-0">
                                                 <label for="locationFilter" class="font-weight-bold"><i
-                                                        class="fas fa-filter"></i> Filter by Location</label>
+                                                         class="fas fa-filter"></i> Filter by Location</label>
                                                 <select id="locationFilter" class="form-control">
                                                     <option value="all">-- All Locations --</option>
                                                     @foreach ($areas->pluck('location_name')->unique() as $location)
@@ -145,11 +141,11 @@
                                                         {{ $area->areas_name }}</td>
                                                     <td>
                                                         <a href="{{ route('secretary.areas.clients.page', $area->id) }}"
-                                                            class="btn btn-sm btn-info">
+                                                             class="btn btn-sm btn-info">
                                                             <i class="fas fa-eye"></i> View Clients
                                                         </a>
                                                         <a href="{{ route('secretary.areas.collections.references', $area->id) }}"
-                                                            class="btn btn-sm btn-success">
+                                                             class="btn btn-sm btn-success">
                                                             <i class="fas fa-hand-holding-usd"></i> Collections
                                                         </a>
                                                     </td>
@@ -356,21 +352,6 @@
                 var displayCard = (val === 'all') ? 'All Assigned Areas' : val;
                 $('#pageHeader').text(displayTitle);
                 $('#cardHeader').text(displayCard);
-
-                // Update Weekly Collection button link
-                var weeklyUrl = "";
-                if (val === 'all') {
-                    var firstLoc = "{{ $areas->first()->location_name ?? '' }}";
-                    if (firstLoc) {
-                        weeklyUrl = "{{ route('secretary.areas.collections.weekly', ['location' => ':location']) }}".replace(':location', encodeURIComponent(firstLoc));
-                        $('#weeklyCollectionBtn').removeClass('disabled').attr('href', weeklyUrl);
-                    } else {
-                        $('#weeklyCollectionBtn').addClass('disabled').attr('href', '#');
-                    }
-                } else {
-                    weeklyUrl = "{{ route('secretary.areas.collections.weekly', ['location' => ':location']) }}".replace(':location', encodeURIComponent(val));
-                    $('#weeklyCollectionBtn').removeClass('disabled').attr('href', weeklyUrl);
-                }
 
                 if (val === 'all') {
                     table.column(0).search('').draw();
