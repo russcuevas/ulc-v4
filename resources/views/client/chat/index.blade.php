@@ -548,41 +548,50 @@
                 <!-- Chat Agent List Sidebar -->
                 <div class="chat-sidebar">
                     <div class="chat-sidebar-header">Support Agents</div>
-                    <div class="chat-agent-list">
-                        <div class="chat-agent-item active">
-                            <div class="agent-avatar">FC</div>
-                            <div class="agent-info">
-                                <div class="agent-name">Financial Counselor Support</div>
-                                <div class="agent-status">Online</div>
+                    <div class="chat-agent-list" id="agents-list">
+                        @if($collector)
+                            <div class="chat-agent-item active" data-staff-type="collector" data-staff-id="{{ $collector->id }}" data-staff-name="Collector: {{ $collector->fullname }}">
+                                <div class="agent-avatar">CO</div>
+                                <div class="agent-info">
+                                    <div class="agent-name">Collector: {{ $collector->fullname }}</div>
+                                    <div class="agent-status">Area Support</div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="chat-agent-item">
-                            <div class="agent-avatar">OS</div>
-                            <div class="agent-info">
-                                <div class="agent-name">Office Secretary</div>
-                                <div class="agent-status">Online</div>
+                        @endif
+                        @if($secretary)
+                            <div class="chat-agent-item {{ !$collector ? 'active' : '' }}" data-staff-type="secretary" data-staff-id="{{ $secretary->id }}" data-staff-name="Secretary: {{ $secretary->fullname }}">
+                                <div class="agent-avatar">OS</div>
+                                <div class="agent-info">
+                                    <div class="agent-name">Secretary: {{ $secretary->fullname }}</div>
+                                    <div class="agent-status">Office Support</div>
+                                </div>
                             </div>
-                        </div>
+                        @endif
+                        @if($admin)
+                            <div class="chat-agent-item {{ (!$collector && !$secretary) ? 'active' : '' }}" data-staff-type="admin" data-staff-id="{{ $admin->id }}" data-staff-name="System Admin">
+                                <div class="agent-avatar">AD</div>
+                                <div class="agent-info">
+                                    <div class="agent-name">System Support (Admin)</div>
+                                    <div class="agent-status">Helpdesk Support</div>
+                                </div>
+                            </div>
+                        @endif
                     </div>
                 </div>
 
                 <!-- Chat Main Pane -->
                 <div class="chat-main">
                     <div class="chat-main-header">
-                        <div class="agent-avatar">FC</div>
+                        <div class="agent-avatar" id="active-agent-avatar">CO</div>
                         <div>
-                            <div class="agent-name" style="font-size: 16px;">Financial Counselor Support</div>
-                            <div class="agent-status">Active Support Agent</div>
+                            <div class="agent-name" id="active-agent-name" style="font-size: 16px;">Support Agent</div>
+                            <div class="agent-status" id="active-agent-status">Active Support Agent</div>
                         </div>
                     </div>
 
                     <!-- Chat Messages List -->
                     <div class="chat-messages" id="chat-messages-container">
-                        <div class="message-bubble message-incoming">
-                            Hello {{ $client->fullname }}! Welcome to ULC Chat Support. How can we help you with your
-                            account today?
-                            <div class="message-time" id="greeting-time"></div>
-                        </div>
+                        <!-- Loaded dynamically -->
                     </div>
 
                     <!-- Chat Input form -->
@@ -644,14 +653,6 @@
             updateManilaTime();
             setInterval(updateManilaTime, 1000);
 
-            // Set greeting time to current time
-            const now = new Date();
-            const formatTimeShort = now.toLocaleTimeString([], {
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-            document.getElementById('greeting-time').innerText = formatTimeShort;
-
             // Mobile Navigation Toggle drawer
             const toggleSidebarBtn = document.getElementById('toggle-sidebar');
             const closeSidebarBtn = document.getElementById('close-sidebar');
@@ -679,62 +680,166 @@
                 });
             }
 
-            // Real-time Chat Simulation logic
-            const chatForm = document.getElementById('chat-form');
-            const chatInputField = document.getElementById('chat-input-field');
-            const chatContainer = document.getElementById('chat-messages-container');
+            // AJAX Chat logic
+            const notyf = new Notyf({
+                duration: 5000,
+                position: { x: 'right', y: 'top' }
+            });
 
-            if (chatForm && chatInputField && chatContainer) {
-                chatForm.addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    const text = chatInputField.value.trim();
-                    if (!text) return;
+            let conversations = [];
+            let activeConversationId = null;
+            let pollingInterval = null;
 
-                    // User Message
-                    const msgTime = new Date().toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    });
-                    const userBubble = `
-                        <div class="message-bubble message-outgoing">
-                            ${escapeHtml(text)}
-                            <div class="message-time" style="color: rgba(255,255,255,0.7);">${msgTime}</div>
-                        </div>
-                    `;
-                    chatContainer.insertAdjacentHTML('beforeend', userBubble);
-                    chatInputField.value = '';
-                    chatContainer.scrollTop = chatContainer.scrollHeight;
+            function getSelectedAgent() {
+                const activeItem = $('.chat-agent-item.active');
+                if (!activeItem.length) return null;
+                return {
+                    type: activeItem.data('staff-type'),
+                    id: activeItem.data('staff-id'),
+                    name: activeItem.data('staff-name')
+                };
+            }
 
-                    // Automated Counselor Response simulation after a tiny delay
-                    setTimeout(function() {
-                        let responseText =
-                            "Thank you for reaching out! A representative will connect with you shortly to assist you with your loans/savings questions. You may also contact your designated area collector directly.";
-
-                        const lowerText = text.toLowerCase();
-                        if (lowerText.includes('balance') || lowerText.includes('due') || lowerText
-                            .includes('pay')) {
-                            responseText =
-                                "To view your active balances, payment dues, or payment log, please navigate back to the 'Loans' portal section in your left sidebar.";
-                        } else if (lowerText.includes('hi') || lowerText.includes('hello')) {
-                            responseText =
-                                "Hello! Hope you are having a great day. How can we support you today?";
-                        } else if (lowerText.includes('savings')) {
-                            responseText =
-                                "For your savings account questions, you can coordinate directly with your collector or visit our branch office.";
-                        }
-
-                        const agentBubble = `
-                            <div class="message-bubble message-incoming">
-                                ${responseText}
-                                <div class="message-time">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                            </div>
-                        `;
-                        chatContainer.insertAdjacentHTML('beforeend', agentBubble);
-                        chatContainer.scrollTop = chatContainer.scrollHeight;
-                    }, 1000);
+            function loadConversations(callback) {
+                $.ajax({
+                    url: "{{ route('api.chat.conversations') }}",
+                    type: "GET",
+                    success: function(response) {
+                        conversations = response;
+                        if (callback) callback();
+                    }
                 });
             }
 
+            function selectAgent() {
+                const agent = getSelectedAgent();
+                if (!agent) return;
+
+                // Update active agent header details
+                $('#active-agent-name').text(agent.name);
+                $('#active-agent-avatar').text(agent.type.substring(0, 2).toUpperCase());
+                $('#active-agent-status').text('Messaging Session');
+
+                // Find matching conversation
+                const match = conversations.find(c => c.staff_type === agent.type && c.staff_id === agent.id);
+                if (match) {
+                    activeConversationId = match.id;
+                    loadMessages(match.id, true);
+                    resetPoller(match.id);
+                } else {
+                    activeConversationId = null;
+                    $('#chat-messages-container').html(`
+                        <div class="text-center text-muted small py-5">
+                            <i class="fas fa-comment-dots fs-1 mb-2 text-secondary"></i>
+                            <p>Send a message to start a secure chat with ${agent.name}.</p>
+                        </div>
+                    `);
+                    if (pollingInterval) clearInterval(pollingInterval);
+                }
+            }
+
+            function loadMessages(convoId, autoScroll = false) {
+                if (!convoId) return;
+
+                $.ajax({
+                    url: `/api/chat/messages/${convoId}`,
+                    type: "GET",
+                    success: function(messages) {
+                        // Check if we are still viewing the same conversation
+                        if (activeConversationId !== convoId) return;
+
+                        const container = $('#chat-messages-container');
+                        
+                        // Keep track of scroll position to prevent jumping unless autoscrolling
+                        const isAtBottom = container[0].scrollHeight - container.scrollTop() <= container.outerHeight() + 50;
+
+                        container.empty();
+
+                        if (messages.length === 0) {
+                            container.html('<div class="text-center text-muted small py-4">No messages yet.</div>');
+                            return;
+                        }
+
+                        messages.forEach(msg => {
+                            const isOutgoing = msg.sender_type === 'client';
+                            const bubbleClass = isOutgoing ? 'message-outgoing' : 'message-incoming';
+                            const timeStr = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                            const bubbleHtml = `
+                                <div class="message-bubble ${bubbleClass}">
+                                    <div>${escapeHtml(msg.message)}</div>
+                                    <div class="message-time">${timeStr}</div>
+                                </div>
+                            `;
+                            container.append(bubbleHtml);
+                        });
+
+                        if (autoScroll || isAtBottom) {
+                            container.scrollTop(container[0].scrollHeight);
+                        }
+                    }
+                });
+            }
+
+            function resetPoller(convoId) {
+                if (pollingInterval) clearInterval(pollingInterval);
+                pollingInterval = setInterval(function() {
+                    loadMessages(convoId, false);
+                }, 3000);
+            }
+
+            // Click agent item handler
+            $(document).on('click', '.chat-agent-item', function() {
+                $('.chat-agent-item').removeClass('active');
+                $(this).addClass('active');
+                selectAgent();
+            });
+
+            // Submit form handler
+            $('#chat-form').on('submit', function(e) {
+                e.preventDefault();
+                const text = $('#chat-input-field').val().trim();
+                if (!text) return;
+
+                const agent = getSelectedAgent();
+                if (!agent) return;
+
+                const postData = {
+                    _token: "{{ csrf_token() }}",
+                    message: text
+                };
+
+                if (activeConversationId) {
+                    postData.conversation_id = activeConversationId;
+                } else {
+                    postData.receiver_type = agent.type;
+                    postData.receiver_id = agent.id;
+                }
+
+                $.ajax({
+                    url: "{{ route('api.chat.send') }}",
+                    type: "POST",
+                    data: postData,
+                    success: function(response) {
+                        $('#chat-input-field').val('');
+                        
+                        // Reload conversations to register the new conversation ID if it was created
+                        loadConversations(function() {
+                            if (response.conversation_id) {
+                                activeConversationId = response.conversation_id;
+                                resetPoller(activeConversationId);
+                            }
+                            loadMessages(activeConversationId, true);
+                        });
+                    },
+                    error: function(xhr) {
+                        const errorMsg = xhr.responseJSON ? xhr.responseJSON.message : "Failed to send message.";
+                        notyf.error(errorMsg);
+                    }
+                });
+            });
+
+            // Helper to escape HTML
             function escapeHtml(text) {
                 return text
                     .replace(/&/g, "&amp;")
@@ -743,6 +848,11 @@
                     .replace(/"/g, "&quot;")
                     .replace(/'/g, "&#039;");
             }
+
+            // Initial load sequence
+            loadConversations(function() {
+                selectAgent();
+            });
         });
     </script>
 </body>

@@ -111,6 +111,14 @@
                     </a>
                 </li>
 
+                <li class="nav-item">
+                    <a href="{{ route('admin.chat.page') }}"
+                        class="nav-link {{ request()->routeIs('admin.chat.page') ? 'active' : '' }}">
+                        <i class="nav-icon fas fa-comments"></i>
+                        <p>Chat Support</p>
+                    </a>
+                </li>
+
                 <li class="nav-item {{ $isAreasActive ? 'menu-open' : '' }}">
                     <a href="{{ route('admin.areas.page') }}" class="nav-link {{ $isAreasActive ? 'active' : '' }}">
                         <i class="nav-icon fas fa-map-marked-alt"></i>

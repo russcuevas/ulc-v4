@@ -1,6 +1,7 @@
 <?php
 // AUTH
 use App\Http\Controllers\auth\AuthController;
+use App\Http\Controllers\ChatController;
 
 // ADMIN
 use App\Http\Controllers\admin\AdminChangePasswordController;
@@ -55,7 +56,7 @@ Route::post('/client/logout', [ClientAuthController::class, 'ClientLogoutRequest
 
 Route::middleware('role:client')->prefix('client')->name('client.')->group(function () {
     Route::get('/dashboard', [ClientDashboardController::class, 'ClientDashboardPage'])->name('dashboard.page');
-    Route::get('/chat', [ClientDashboardController::class, 'ClientChatPage'])->name('chat.page');
+    Route::get('/chat', [ChatController::class, 'ClientChatPage'])->name('chat.page');
 });
 
 // ADMIN ROUTES
@@ -155,6 +156,9 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
 
     Route::get('/areas/{location}', [AdminManilaController::class, 'AdminManilaPage'])
         ->name('admin.areas.location.page');
+
+    Route::get('/chat', [ChatController::class, 'StaffChatPage'])
+        ->name('admin.chat.page');
 });
 
 // SECRETARY ROUTES
@@ -229,6 +233,9 @@ Route::middleware('role:secretary')->prefix('secretary')->name('secretary.')->gr
     // PRINT SUMMARY COLLECTION
     Route::get('/areas/{areaId}/collections/summary-print', [SecretaryCollectionController::class, 'SecretaryPrintSummaryCollection'])
         ->name('areas.collections.summary.print');
+
+    Route::get('/chat', [ChatController::class, 'StaffChatPage'])
+        ->name('chat.page');
 });
 
 // COLLECTOR ROUTES
@@ -245,6 +252,9 @@ Route::middleware('role:collector')->prefix('collector')->name('collector.')->gr
         ->name('collections.store');
     Route::post('/collections/bulk-store', [CollectorCollectionController::class, 'CollectorBulkCollectPaymentRequest'])
         ->name('collections.bulk-store');
+
+    Route::get('/chat', [ChatController::class, 'StaffChatPage'])
+        ->name('chat.page');
 });
 
 // MANAGEMENT ROUTES
@@ -279,3 +289,8 @@ Route::post('/notifications/mark-read', [NotificationsController::class, 'markAs
 
 Route::post('/notifications/mark-all-read', [NotificationsController::class, 'markAllAsRead'])
     ->name('notifications.mark.all');
+
+// SECURE API CHAT ENDPOINTS
+Route::get('/api/chat/conversations', [ChatController::class, 'getConversations'])->name('api.chat.conversations');
+Route::get('/api/chat/messages/{conversationId}', [ChatController::class, 'getMessages'])->name('api.chat.messages');
+Route::post('/api/chat/send', [ChatController::class, 'sendMessage'])->name('api.chat.send');

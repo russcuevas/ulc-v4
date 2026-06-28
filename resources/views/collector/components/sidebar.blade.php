@@ -40,6 +40,14 @@
                     </a>
                 </li>
 
+                <li class="nav-item">
+                    <a href="{{ route('collector.chat.page') }}"
+                        class="nav-link {{ request()->routeIs('collector.chat.page') ? 'active' : '' }}">
+                        <i class="nav-icon fas fa-comments"></i>
+                        <p>Chat Support</p>
+                    </a>
+                </li>
+
             </ul>
 
             <!-- Logout -->
