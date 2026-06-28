@@ -21,38 +21,16 @@
 
         body {
             font-family: 'Poppins', sans-serif;
-            background: #0b0b0f;
-            color: #ffffff;
+            background: #f4f6f9;
+            color: #1e293b;
             min-height: 100vh;
             overflow-x: hidden;
             position: relative;
         }
 
-        /* Ambient background glow effects */
-        .ambient-glow-1 {
-            position: absolute;
-            width: 600px;
-            height: 600px;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(255, 95, 0, 0.06) 0%, rgba(255, 95, 0, 0) 70%);
-            top: -10%;
-            left: -10%;
-            filter: blur(100px);
-            pointer-events: none;
-            z-index: 0;
-        }
-
-        .ambient-glow-2 {
-            position: absolute;
-            width: 700px;
-            height: 700px;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(0, 123, 255, 0.05) 0%, rgba(0, 123, 255, 0) 70%);
-            bottom: -10%;
-            right: -10%;
-            filter: blur(120px);
-            pointer-events: none;
-            z-index: 0;
+        /* Ambient background glow effects (disabled on light theme for clean look) */
+        .ambient-glow-1, .ambient-glow-2 {
+            display: none;
         }
 
         /* Sidebar styling */
@@ -62,22 +40,21 @@
             left: 0;
             bottom: 0;
             width: 280px;
-            background: rgba(19, 19, 26, 0.98);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-right: 1px solid rgba(255, 255, 255, 0.08);
+            background: #ffffff;
+            border-right: 1px solid #e2e8f0;
             z-index: 1050;
             padding: 30px 20px;
             display: flex;
             flex-direction: column;
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
         }
 
         .sidebar-brand {
             font-family: 'Outfit', sans-serif;
             font-size: 24px;
             font-weight: 800;
-            color: #ffffff;
+            color: #1e293b;
             letter-spacing: -0.5px;
             margin-bottom: 35px;
             padding-left: 10px;
@@ -92,14 +69,14 @@
 
         .sidebar-brand i {
             color: #FF5F00;
-            background: rgba(255, 95, 0, 0.1);
+            background: rgba(255, 95, 0, 0.05);
             width: 38px;
             height: 38px;
             display: flex;
             align-items: center;
             justify-content: center;
             border-radius: 10px;
-            border: 1px solid rgba(255, 95, 0, 0.2);
+            border: 1px solid rgba(255, 95, 0, 0.15);
             font-size: 18px;
         }
 
@@ -115,7 +92,7 @@
             align-items: center;
             gap: 12px;
             padding: 14px 20px;
-            color: #9ca3af;
+            color: #475569;
             font-family: 'Outfit', sans-serif;
             font-weight: 600;
             font-size: 15px;
@@ -136,13 +113,13 @@
         }
 
         .sidebar-link:hover {
-            color: #ffffff;
-            background: rgba(255, 255, 255, 0.03);
+            color: #FF5F00;
+            background: rgba(255, 95, 0, 0.03);
         }
 
         .sidebar-link.active {
-            background: rgba(255, 95, 0, 0.1);
-            border: 1px solid rgba(255, 95, 0, 0.25);
+            background: rgba(255, 95, 0, 0.08);
+            border: 1px solid rgba(255, 95, 0, 0.2);
             color: #FF5F00;
         }
 
@@ -153,8 +130,8 @@
         }
 
         .sidebar-link.logout-link:hover {
-            background: rgba(220, 53, 69, 0.1);
-            border-color: rgba(220, 53, 69, 0.2);
+            background: rgba(220, 53, 69, 0.05);
+            border-color: rgba(220, 53, 69, 0.15);
             color: #ff4d5e;
         }
 
@@ -168,9 +145,8 @@
         }
 
         .main-header-bar {
-            background: rgba(23, 23, 33, 0.5);
-            backdrop-filter: blur(15px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
             padding: 20px 40px;
             display: flex;
             justify-content: space-between;
@@ -178,6 +154,7 @@
             position: sticky;
             top: 0;
             z-index: 990;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
         }
 
         .main-body-container {
@@ -190,21 +167,22 @@
         /* Mobile Responsive Sidebar toggling */
         .mobile-header {
             display: none;
-            background: rgba(19, 19, 26, 0.95);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
             padding: 15px 20px;
             position: sticky;
             top: 0;
             z-index: 1000;
             align-items: center;
             justify-content: space-between;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
         }
 
         .logo-text {
             font-family: 'Outfit', sans-serif;
             font-size: 22px;
             font-weight: 800;
-            color: #ffffff;
+            color: #1e293b;
             letter-spacing: -0.5px;
             margin: 0;
         }
@@ -216,7 +194,7 @@
         .sidebar-toggle-btn {
             background: none;
             border: none;
-            color: #ffffff;
+            color: #1e293b;
             font-size: 22px;
             cursor: pointer;
             padding: 5px;
@@ -230,30 +208,29 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
             z-index: 1040;
             display: none;
         }
 
         /* Profile & Cards styling */
         .profile-card {
-            background: rgba(23, 23, 33, 0.75);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
             border-radius: 20px;
             padding: 30px;
             height: 100%;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
         }
 
         .profile-avatar {
             width: 70px;
             height: 70px;
             border-radius: 20px;
-            background: rgba(255, 95, 0, 0.1);
-            border: 1px solid rgba(255, 95, 0, 0.25);
+            background: rgba(255, 95, 0, 0.05);
+            border: 1px solid rgba(255, 95, 0, 0.15);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -265,7 +242,7 @@
             font-family: 'Outfit', sans-serif;
             font-weight: 700;
             font-size: 24px;
-            color: #ffffff;
+            color: #1e293b;
             margin-bottom: 5px;
         }
 
@@ -273,7 +250,7 @@
             display: flex;
             justify-content: space-between;
             padding: 12px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid #f1f5f9;
             gap: 15px;
         }
 
@@ -282,32 +259,33 @@
         }
 
         .info-label {
-            color: #9ca3af;
+            color: #64748b;
             font-size: 14px;
             white-space: nowrap;
         }
 
         .info-value {
             font-weight: 600;
-            color: #ffffff;
+            color: #1e293b;
             font-size: 14px;
             text-align: right;
             word-break: break-all;
         }
 
         .section-card {
-            background: rgba(23, 23, 33, 0.75);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
             border-radius: 20px;
             padding: 30px;
             margin-bottom: 30px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
         }
 
         .section-header {
             font-family: 'Outfit', sans-serif;
             font-weight: 700;
             font-size: 20px;
+            color: #1e293b;
             margin-bottom: 25px;
             display: flex;
             align-items: center;
@@ -317,34 +295,34 @@
         }
 
         .custom-table {
-            color: #ffffff;
+            color: #1e293b;
             margin-bottom: 0;
         }
 
         .custom-table th {
-            background: rgba(255, 255, 255, 0.03) !important;
-            color: #9ca3af !important;
+            background: #f8fafc !important;
+            color: #475569 !important;
             font-size: 12px;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             padding: 14px 16px !important;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+            border-bottom: 1px solid #e2e8f0 !important;
             white-space: nowrap;
         }
 
         .custom-table td {
             background: transparent !important;
-            color: #ffffff !important;
+            color: #1e293b !important;
             font-size: 14px;
             padding: 14px 16px !important;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+            border-bottom: 1px solid #f1f5f9 !important;
             vertical-align: middle;
             white-space: nowrap;
         }
 
         .custom-table tbody tr:hover td {
-            background: rgba(255, 255, 255, 0.01) !important;
+            background: #f8fafc !important;
         }
 
         .status-badge {
@@ -358,44 +336,44 @@
         }
 
         .status-active {
-            background: rgba(40, 167, 69, 0.1);
-            border: 1px solid rgba(40, 167, 69, 0.3);
+            background: rgba(40, 167, 69, 0.08);
+            border: 1px solid rgba(40, 167, 69, 0.2);
             color: #28a745;
         }
 
         .status-lapsed {
-            background: rgba(220, 53, 69, 0.1);
-            border: 1px solid rgba(220, 53, 69, 0.3);
+            background: rgba(220, 53, 69, 0.08);
+            border: 1px solid rgba(220, 53, 69, 0.2);
             color: #dc3545;
         }
 
         .status-paid {
-            background: rgba(0, 123, 255, 0.1);
-            border: 1px solid rgba(0, 123, 255, 0.3);
+            background: rgba(0, 123, 255, 0.08);
+            border: 1px solid rgba(0, 123, 255, 0.2);
             color: #007bff;
         }
 
         .status-pending {
-            background: rgba(255, 193, 7, 0.1);
-            border: 1px solid rgba(255, 193, 7, 0.3);
-            color: #ffc107;
+            background: rgba(255, 193, 7, 0.08);
+            border: 1px solid rgba(255, 193, 7, 0.2);
+            color: #ff8c00;
         }
 
         .empty-state {
             text-align: center;
             padding: 40px 0;
-            color: #6b7280;
+            color: #64748b;
         }
 
         .empty-state i {
             font-size: 40px;
             margin-bottom: 15px;
-            color: rgba(255, 255, 255, 0.15);
+            color: rgba(0, 0, 0, 0.08);
         }
 
         .alert-lapsed {
-            background: rgba(220, 53, 69, 0.1);
-            border: 1px solid rgba(220, 53, 69, 0.25);
+            background: rgba(220, 53, 69, 0.05);
+            border: 1px solid rgba(220, 53, 69, 0.15);
             border-radius: 12px;
             color: #dc3545;
             padding: 16px;
@@ -605,7 +583,7 @@
                                 <thead>
                                     <tr>
                                         <th>Loan Term</th>
-                                        <th class="text-end">Balance</th>
+                                        <th class="text-end">Outstanding Balance</th>
                                         <th class="text-end">Savings</th>
                                         <th>Status</th>
                                     </tr>
@@ -667,9 +645,9 @@
                             <div class="d-flex align-items-center gap-2">
                                 <span class="text small" style="white-space: nowrap;">Search Date:</span>
                                 <input type="text" id="payment-search-input"
-                                    class="form-control form-control-sm bg-dark text-white border-secondary"
+                                    class="form-control form-control-sm bg-white text-dark"
                                     placeholder="e.g. Jun 28, 2026"
-                                    style="width: 180px; border-radius: 8px; font-size: 13px;">
+                                    style="width: 180px; border-radius: 8px; font-size: 13px; border: 1.5px solid #cbd5e1;">
                             </div>
                         </div>
 
@@ -680,6 +658,7 @@
                                         <th>Date</th>
                                         <th>Collected By</th>
                                         <th>Payment Type</th>
+                                        <th class="text-end">Old Balance</th>
                                         <th class="text-end">Amount Paid</th>
                                         @if ($isFC)
                                             <th class="text-end">Savings</th>
@@ -836,7 +815,7 @@
                 }
 
                 if (filteredPayments.length === 0) {
-                    const cols = isFC ? 5 : 4;
+                    const cols = isFC ? 6 : 5;
                     tableBody.innerHTML = `
                         <tr>
                             <td colspan="${cols}">
@@ -858,6 +837,7 @@
                     const payment = filteredPayments[i];
                     const dateFormatted = formatDate(payment.due_date);
                     const timeFormatted = formatTime(payment.created_at);
+                    const oldBalanceFormatted = formatCurrency(payment.old_balance || 0);
                     const collectionFormatted = formatCurrency(payment.collection);
                     const savingsFormatted = formatCurrency(payment.savings_amount || 0);
                     const paymentType = payment.type ? payment.type : 'Daily';
@@ -876,14 +856,17 @@
                                     ${paymentType}
                                 </span>
                             </td>
+                            <td class="text-end font-monospace text-warning fw-bold">
+                                ${oldBalanceFormatted}
+                            </td>
                             <td class="text-end font-monospace text-success fw-bold">
                                 ${collectionFormatted}
                             </td>
                             ${isFC ? `
-                                                    <td class="text-end font-monospace text-success fw-bold">
-                                                        ${savingsFormatted}
-                                                    </td>
-                                                ` : ''}
+                                                        <td class="text-end font-monospace text-success fw-bold">
+                                                            ${savingsFormatted}
+                                                        </td>
+                                                    ` : ''}
                         </tr>
                     `;
                 }

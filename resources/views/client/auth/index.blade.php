@@ -20,7 +20,7 @@
 
         body {
             font-family: 'Poppins', sans-serif;
-            background: #0b0b0f;
+            background: #f8fafc;
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -35,7 +35,7 @@
             width: 500px;
             height: 500px;
             border-radius: 50%;
-            background: radial-gradient(circle, rgba(255, 95, 0, 0.15) 0%, rgba(255, 95, 0, 0) 70%);
+            background: radial-gradient(circle, rgba(255, 95, 0, 0.08) 0%, rgba(255, 95, 0, 0) 70%);
             top: -10%;
             left: -10%;
             filter: blur(80px);
@@ -48,7 +48,7 @@
             width: 600px;
             height: 600px;
             border-radius: 50%;
-            background: radial-gradient(circle, rgba(0, 123, 255, 0.1) 0%, rgba(0, 123, 255, 0) 70%);
+            background: radial-gradient(circle, rgba(0, 123, 255, 0.05) 0%, rgba(0, 123, 255, 0) 70%);
             bottom: -20%;
             right: -10%;
             filter: blur(100px);
@@ -74,18 +74,16 @@
         }
 
         .login-card {
-            background: rgba(23, 23, 33, 0.75);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
             border-radius: 24px;
             padding: 40px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
             transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
 
         .login-card:hover {
-            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(255, 95, 0, 0.05);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08), 0 0 40px rgba(255, 95, 0, 0.03);
         }
 
         .logo-section {
@@ -104,15 +102,15 @@
         .logo-icon {
             font-size: 28px;
             color: #FF5F00;
-            background: rgba(255, 95, 0, 0.1);
+            background: rgba(255, 95, 0, 0.06);
             width: 54px;
             height: 54px;
             display: flex;
             align-items: center;
             justify-content: center;
             border-radius: 16px;
-            border: 1px solid rgba(255, 95, 0, 0.25);
-            box-shadow: 0 0 25px rgba(255, 95, 0, 0.15);
+            border: 1px solid rgba(255, 95, 0, 0.15);
+            box-shadow: 0 0 25px rgba(255, 95, 0, 0.05);
             animation: float 4s infinite ease-in-out;
         }
 
@@ -132,7 +130,7 @@
             font-family: 'Outfit', sans-serif;
             font-size: 26px;
             font-weight: 800;
-            color: #ffffff;
+            color: #1e293b;
             letter-spacing: -0.5px;
         }
 
@@ -141,7 +139,7 @@
         }
 
         .welcome-text {
-            color: #9ca3af;
+            color: #64748b;
             font-size: 14px;
             margin-top: 6px;
             font-weight: 400;
@@ -154,7 +152,7 @@
 
         .input-group label {
             display: block;
-            color: #9ca3af;
+            color: #475569;
             font-size: 12px;
             font-weight: 600;
             margin-bottom: 8px;
@@ -172,7 +170,7 @@
         .input-icon {
             position: absolute;
             left: 16px;
-            color: #6b7280;
+            color: #94a3b8;
             font-size: 16px;
             transition: color 0.3s ease;
             pointer-events: none;
@@ -181,10 +179,10 @@
         .input-control {
             width: 100%;
             padding: 14px 16px 14px 48px;
-            background: rgba(255, 255, 255, 0.02);
-            border: 1.5px solid rgba(255, 255, 255, 0.08);
+            background: #ffffff;
+            border: 1.5px solid #cbd5e1;
             border-radius: 12px;
-            color: #ffffff;
+            color: #1e293b;
             font-family: inherit;
             font-size: 16px;
             letter-spacing: 1px;
@@ -192,14 +190,14 @@
         }
 
         .input-control::placeholder {
-            color: #4b5563;
+            color: #94a3b8;
             letter-spacing: normal;
         }
 
         .input-control:focus {
             outline: none;
             border-color: #FF5F00;
-            background: rgba(255, 95, 0, 0.02);
+            background: #ffffff;
             box-shadow: 0 0 0 4px rgba(255, 95, 0, 0.12);
         }
 
