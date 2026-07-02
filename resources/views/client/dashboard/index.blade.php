@@ -838,7 +838,8 @@
                     const payment = filteredPayments[i];
                     const dateFormatted = formatDate(payment.due_date);
                     const timeFormatted = formatTime(payment.created_at);
-                    const oldBalanceFormatted = formatCurrency(payment.old_balance || 0);
+                    const remainingBalance = Math.max(0, (payment.old_balance || 0) - payment.collection);
+                    const oldBalanceFormatted = formatCurrency(remainingBalance);
                     const collectionFormatted = formatCurrency(payment.collection);
                     const savingsFormatted = formatCurrency(payment.savings_amount || 0);
                     const paymentType = payment.type ? payment.type : 'Daily';
@@ -864,10 +865,10 @@
                                 ${collectionFormatted}
                             </td>
                             ${isFC ? `
-                                                            <td class="text-end font-monospace text-success fw-bold">
-                                                                ${savingsFormatted}
-                                                            </td>
-                                                        ` : ''}
+                                                                            <td class="text-end font-monospace text-success fw-bold">
+                                                                                ${savingsFormatted}
+                                                                            </td>
+                                                                        ` : ''}
                         </tr>
                     `;
                 }

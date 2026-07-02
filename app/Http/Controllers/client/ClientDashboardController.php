@@ -12,14 +12,14 @@ class ClientDashboardController extends Controller
     public function ClientDashboardPage()
     {
         $clientSession = Session::get('user');
-        
+
         if (!$clientSession) {
             return redirect()->route('client.login.page')->with('error', 'Please login first.');
         }
 
         // Fetch fresh client data from database
         $client = DB::table('clients')->where('id', $clientSession->id)->first();
-        
+
         if (!$client) {
             Session::flush();
             return redirect()->route('client.login.page')->with('error', 'Account not found.');
@@ -34,14 +34,7 @@ class ClientDashboardController extends Controller
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($loan) {
-                // Sum all collections in clients_payments for this loan, ignoring is_collected (1 or 0)
-                $totalPaid = DB::table('clients_payments')
-                    ->where('client_loans_id', $loan->id)
-                    ->sum('collection');
-
-                $loan->balance = max(0, $loan->loan_amount - $totalPaid);
-                
-                // If computed balance is fully settled, mark display status as paid
+                // If database balance is fully settled, mark display status as paid
                 if ($loan->balance <= 0) {
                     $loan->status = 'paid';
                 }
@@ -69,14 +62,14 @@ class ClientDashboardController extends Controller
     public function ClientChatPage()
     {
         $clientSession = Session::get('user');
-        
+
         if (!$clientSession) {
             return redirect()->route('client.login.page')->with('error', 'Please login first.');
         }
 
         // Fetch fresh client data from database
         $client = DB::table('clients')->where('id', $clientSession->id)->first();
-        
+
         if (!$client) {
             Session::flush();
             return redirect()->route('client.login.page')->with('error', 'Account not found.');

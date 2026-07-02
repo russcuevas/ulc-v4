@@ -532,10 +532,7 @@ class ChatController extends Controller
             $loanLines = "";
 
             foreach ($loans as $loan) {
-                $totalPaid = DB::table('clients_payments')
-                    ->where('client_loans_id', $loan->id)
-                    ->sum('collection');
-                $balance = max(0, $loan->loan_amount - $totalPaid);
+                $balance = $loan->balance;
                 
                 $statusText = $loan->status;
                 if ($balance <= 0) {
@@ -573,10 +570,7 @@ class ChatController extends Controller
 
             foreach ($loans as $loan) {
                 $statusText = $loan->status;
-                $totalPaid = DB::table('clients_payments')
-                    ->where('client_loans_id', $loan->id)
-                    ->sum('collection');
-                $balance = max(0, $loan->loan_amount - $totalPaid);
+                $balance = $loan->balance;
                 if ($balance <= 0) {
                     $statusText = 'paid';
                 }
