@@ -838,7 +838,9 @@
                     const payment = filteredPayments[i];
                     const dateFormatted = formatDate(payment.due_date);
                     const timeFormatted = formatTime(payment.created_at);
-                    const remainingBalance = Math.max(0, (payment.old_balance || 0) - payment.collection);
+                    const remainingBalance = payment.hasOwnProperty('computed_remaining_balance') 
+                        ? payment.computed_remaining_balance 
+                        : Math.max(0, (payment.old_balance || 0) - payment.collection);
                     const oldBalanceFormatted = formatCurrency(remainingBalance);
                     const collectionFormatted = formatCurrency(payment.collection);
                     const savingsFormatted = formatCurrency(payment.savings_amount || 0);

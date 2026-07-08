@@ -47,14 +47,60 @@ class ClientDashboardController extends Controller
                 return $loan;
             });
 
-        // Fetch recent payments of client
+        // Fetch recent payments of client (only approved ones)
         $payments = DB::table('clients_payments as cp')
             ->leftJoin('collectors as col', 'cp.collected_by', '=', 'col.id')
             ->where('cp.client_id', $client->id)
+            ->where('cp.is_collected', 1)
             ->select('cp.*', 'col.fullname as collected_by_name')
             ->orderBy('cp.due_date', 'desc')
             ->orderBy('cp.created_at', 'desc')
             ->get();
+
+        // Calculate running balance dynamically to avoid database old_balance discrepancy
+        // Group payments by loan ID
+        $paymentsByLoan = [];
+        foreach ($payments as $payment) {
+            $paymentsByLoan[$payment->client_loans_id][] = $payment;
+        }
+
+        foreach ($paymentsByLoan as $loanId => $loanPayments) {
+            // Find the corresponding loan
+            $loan = $loans->firstWhere('id', $loanId);
+            if (!$loan) {
+                // Try fetching the loan directly if it is not in the client's current active loans list
+                $loan = DB::table('clients_loans')->where('id', $loanId)->first();
+            }
+
+            if ($loan) {
+                // Sort payments chronologically (oldest first) for running balance calculation
+                usort($loanPayments, function ($a, $b) {
+                    $dueDateCompare = strcmp($a->due_date, $b->due_date);
+                    if ($dueDateCompare !== 0) {
+                        return $dueDateCompare;
+                    }
+                    return strcmp($a->created_at, $b->created_at);
+                });
+
+                // Calculate the starting balance of the loan
+                // starting_balance = current_loan_balance + sum(collection of all approved payments)
+                $approvedSum = 0;
+                foreach ($loanPayments as $payment) {
+                    if ($payment->is_collected == 1) {
+                        $approvedSum += ($payment->collection ?? 0.00);
+                    }
+                }
+                
+                $runningBalance = $loan->balance + $approvedSum;
+
+                // Compute running balance for each payment (chronological order)
+                foreach ($loanPayments as $payment) {
+                    $payment->computed_old_balance = $runningBalance;
+                    $payment->computed_remaining_balance = max(0, $runningBalance - ($payment->collection ?? 0.00));
+                    $runningBalance = $payment->computed_remaining_balance;
+                }
+            }
+        }
 
         return view('client.dashboard.index', compact('client', 'area', 'loans', 'payments'));
     }

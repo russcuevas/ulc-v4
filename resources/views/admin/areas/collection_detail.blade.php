@@ -334,7 +334,31 @@
                                             </td>
 
                                             @if (stripos($location_name ?? '', 'Financial Counselor') !== false)
-                                                <td class="savings-cell">₱{{ number_format($client->payment->savings_amount ?? 0, 2) }}</td>
+                                                <td class="savings-cell">
+                                                    ₱{{ number_format($client->payment->savings_amount ?? 0, 2) }}
+                                                    @if (!$isPaid)
+                                                        @if ($client->payment)
+                                                            <button type="button"
+                                                                class="btn btn-sm btn-warning edit-savings-btn"
+                                                                data-payment-id="{{ $client->payment->id }}"
+                                                                data-loan-id="{{ $client->loan->id }}"
+                                                                data-client-name="{{ $client->fullname }}"
+                                                                data-savings="{{ $client->payment->savings_amount ?? '' }}"
+                                                                title="Edit Savings">
+                                                                <i class="fas fa-edit"></i>
+                                                            </button>
+                                                        @else
+                                                            <button type="button"
+                                                                class="btn btn-sm btn-success edit-savings-btn"
+                                                                data-payment-id="" data-loan-id="{{ $client->loan->id }}"
+                                                                data-client-name="{{ $client->fullname }}"
+                                                                data-savings=""
+                                                                title="Add Savings">
+                                                                <i class="fas fa-plus"></i>
+                                                            </button>
+                                                        @endif
+                                                    @endif
+                                                </td>
                                             @endif
 
                                             {{-- Collection --}}
@@ -737,6 +761,33 @@
         </div>
     </div>
 
+    <!-- Edit Savings Modal -->
+    <div class="modal fade" id="editSavingsModal" tabindex="-1" role="dialog"
+        aria-labelledby="editSavingsModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editSavingsModalLabel">Add/Edit Savings</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-2"><strong>Client:</strong> <span id="editSavingsClientName"></span></p>
+                    <div class="form-group">
+                        <label for="editSavingsInput">Savings Amount (₱)</label>
+                        <input type="number" id="editSavingsInput" class="form-control" min="0"
+                            step="0.01" placeholder="Enter savings amount">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="saveSavingsBtn">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         $(function() {
             var currentPaymentId = null;
@@ -802,6 +853,62 @@
                     error: function() {
                         Swal.fire('Error!',
                             'Something went wrong while saving the collection.', 'error');
+                    }
+                });
+            });
+
+            var currentSavingsPaymentId = null;
+            var currentSavingsLoanId = null;
+
+            $(document).on('click', '.edit-savings-btn', function() {
+                currentSavingsPaymentId = $(this).data('payment-id');
+                currentSavingsLoanId = $(this).data('loan-id');
+                var clientName = $(this).data('client-name');
+                var savings = $(this).data('savings');
+
+                $('#editSavingsClientName').text(clientName);
+                $('#editSavingsInput').val(savings !== '' ? savings : '');
+
+                if (currentSavingsPaymentId) {
+                    $('#editSavingsModalLabel').html('<i class="fas fa-edit mr-1"></i> Edit Savings');
+                    $('#saveSavingsBtn').text('Save Changes');
+                } else {
+                    $('#editSavingsModalLabel').html('<i class="fas fa-plus mr-1"></i> Add Savings');
+                    $('#saveSavingsBtn').text('Add Savings');
+                }
+
+                $('#editSavingsModal').modal('show');
+            });
+
+            $('#saveSavingsBtn').on('click', function() {
+                var newSavings = $('#editSavingsInput').val();
+
+                if (newSavings === '' || isNaN(newSavings) || parseFloat(newSavings) < 0) {
+                    Swal.fire('Invalid Input', 'Please enter a valid savings amount.', 'warning');
+                    return;
+                }
+
+                $.ajax({
+                    url: '{{ route('admin.collections.savings.save') }}',
+                    method: 'POST',
+                    data: {
+                        _token: $('meta[name="csrf-token"]').attr('content'),
+                        payment_id: currentSavingsPaymentId,
+                        loan_id: currentSavingsLoanId,
+                        reference_number: '{{ $refNo }}',
+                        due_date: '{{ $selectedDate }}',
+                        client_area: '{{ $areaId }}',
+                        savings_amount: parseFloat(newSavings)
+                    },
+                    success: function(response) {
+                        $('#editSavingsModal').modal('hide');
+                        Swal.fire('Success!', response.message, 'success').then(function() {
+                            location.reload();
+                        });
+                    },
+                    error: function() {
+                        Swal.fire('Error!',
+                            'Something went wrong while saving the savings.', 'error');
                     }
                 });
             });

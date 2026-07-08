@@ -902,4 +902,101 @@ class SecretaryCollectionController extends Controller
 
         return response()->json(['message' => 'Collection reversed successfully.']);
     }
+
+    public function SecretarySaveSavingsAmount(Request $request)
+    {
+        $request->validate([
+            'loan_id' => 'required|exists:clients_loans,id',
+            'payment_id' => 'nullable|exists:clients_payments,id',
+            'reference_number' => 'required',
+            'due_date' => 'required|date',
+            'client_area' => 'required',
+            'savings_amount' => 'required|numeric|min:0',
+        ]);
+
+        $loanId = $request->input('loan_id');
+        $paymentId = $request->input('payment_id');
+        $refNo = $request->input('reference_number');
+        $dueDate = $request->input('due_date');
+        $areaId = $request->input('client_area');
+        $newSavings = (float) $request->input('savings_amount');
+
+        $loan = DB::table('clients_loans')->where('id', $loanId)->first();
+        if (!$loan) {
+            return response()->json(['message' => 'Loan not found.'], 404);
+        }
+
+        $secretary = Session::get('user');
+        $collectorId = DB::table('areas')->where('id', $areaId)->value('collector_id');
+        $isLapsed = \Carbon\Carbon::parse($dueDate)->gt(\Carbon\Carbon::parse($loan->loan_to)) ? 1 : 0;
+
+        $payment = null;
+        if (!empty($paymentId)) {
+            $payment = DB::table('clients_payments')->where('id', $paymentId)->first();
+        }
+
+        DB::beginTransaction();
+        try {
+            if ($payment) {
+                // Update existing payment
+                $oldSavings = (float) ($payment->savings_amount ?? 0.00);
+                $savingsDiff = $newSavings - $oldSavings;
+
+                DB::table('clients_payments')
+                    ->where('id', $payment->id)
+                    ->update([
+                        'savings_amount' => $newSavings,
+                        'updated_at' => now(),
+                    ]);
+
+                // Update clients_loans savings_balance
+                $newSavingsBalance = (float) $loan->savings_balance + $savingsDiff;
+                $newSavingsBalance = max(0, $newSavingsBalance);
+
+                DB::table('clients_loans')
+                    ->where('id', $loan->id)
+                    ->update([
+                        'savings_balance' => $newSavingsBalance,
+                        'updated_at' => now(),
+                    ]);
+            } else {
+                // Create new payment
+                DB::table('clients_payments')->insert([
+                    'reference_number' => (string) $refNo,
+                    'client_id' => $loan->client_id,
+                    'client_loans_id' => $loan->id,
+                    'client_area' => $areaId,
+                    'collection' => null,
+                    'type' => null,
+                    'savings_amount' => $newSavings,
+                    'is_lapsed' => $isLapsed,
+                    'is_collected' => 0,
+                    'due_date' => $dueDate,
+                    'daily' => $loan->daily ?? 0,
+                    'old_balance' => $loan->balance ?? 0,
+                    'created_by' => $secretary->id ?? null,
+                    'collected_by' => $collectorId,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+
+                // Update clients_loans savings_balance
+                $newSavingsBalance = (float) $loan->savings_balance + $newSavings;
+
+                DB::table('clients_loans')
+                    ->where('id', $loan->id)
+                    ->update([
+                        'savings_balance' => $newSavingsBalance,
+                        'updated_at' => now(),
+                    ]);
+            }
+
+            DB::commit();
+            return response()->json(['message' => 'Savings saved and updated successfully.']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'Failed to save savings: ' . $e->getMessage()], 500);
+        }
+    }
+
 }
