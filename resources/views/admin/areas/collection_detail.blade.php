@@ -358,6 +358,16 @@
                                                             </button>
                                                         @endif
                                                     @endif
+                                                    @if ($client->payment && !is_null($client->payment->savings_amount) && $client->payment->savings_amount > 0)
+                                                        <button type="button"
+                                                            class="btn btn-sm btn-danger reverse-savings-btn"
+                                                            data-payment-id="{{ $client->payment->id }}"
+                                                            data-loan-id="{{ $client->loan->id }}"
+                                                            data-client-name="{{ $client->fullname }}"
+                                                            title="Reverse Savings">
+                                                            <i class="fas fa-undo"></i>
+                                                        </button>
+                                                    @endif
                                                 </td>
                                             @endif
 
@@ -909,6 +919,59 @@
                     error: function() {
                         Swal.fire('Error!',
                             'Something went wrong while saving the savings.', 'error');
+                    }
+                });
+            });
+
+            $(document).on('click', '.reverse-savings-btn', function() {
+                var paymentId = $(this).data('payment-id');
+                var loanId = $(this).data('loan-id');
+                var clientName = $(this).data('client-name');
+
+                Swal.fire({
+                    title: 'Reverse savings for ' + clientName + '?',
+                    text: 'This will reset the savings amount to 0.00, and adjust the client\'s loan savings balance accordingly.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Yes, reverse it!'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        Swal.fire({
+                            title: 'Processing...',
+                            text: 'Please wait while we process your request.',
+                            allowOutsideClick: false,
+                            allowEscapeKey: false,
+                            showConfirmButton: false,
+                            didOpen: () => {
+                                Swal.showLoading();
+                            }
+                        });
+
+                        $.ajax({
+                            url: '{{ route('admin.collections.savings.reverse') }}',
+                            method: 'POST',
+                            data: {
+                                _token: $('meta[name="csrf-token"]').attr('content'),
+                                payment_id: paymentId,
+                                loan_id: loanId,
+                                reference_number: '{{ $refNo }}',
+                                due_date: '{{ $selectedDate }}',
+                                client_area: '{{ $areaId }}'
+                            },
+                            success: function(response) {
+                                Swal.fire('Success!', response.message, 'success').then(
+                                    function() {
+                                        location.reload();
+                                    });
+                            },
+                            error: function() {
+                                Swal.fire('Error!',
+                                    'Something went wrong while reversing the savings.',
+                                    'error');
+                            }
+                        });
                     }
                 });
             });

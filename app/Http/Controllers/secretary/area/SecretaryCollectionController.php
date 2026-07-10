@@ -999,4 +999,61 @@ class SecretaryCollectionController extends Controller
         }
     }
 
+    public function SecretaryReverseSavingsAmount(Request $request)
+    {
+        $request->validate([
+            'loan_id' => 'required|exists:clients_loans,id',
+            'payment_id' => 'required|exists:clients_payments,id',
+            'reference_number' => 'required',
+            'due_date' => 'required|date',
+            'client_area' => 'required',
+        ]);
+
+        $loanId = $request->input('loan_id');
+        $paymentId = $request->input('payment_id');
+        $refNo = $request->input('reference_number');
+        $dueDate = $request->input('due_date');
+        $areaId = $request->input('client_area');
+
+        $loan = DB::table('clients_loans')->where('id', $loanId)->first();
+        if (!$loan) {
+            return response()->json(['message' => 'Loan not found.'], 404);
+        }
+
+        $payment = DB::table('clients_payments')->where('id', $paymentId)->first();
+        if (!$payment) {
+            return response()->json(['message' => 'Payment not found.'], 404);
+        }
+
+        $oldSavings = (float) ($payment->savings_amount ?? 0.00);
+
+        DB::beginTransaction();
+        try {
+            // Update clients_payments savings_amount to 0.00
+            DB::table('clients_payments')
+                ->where('id', $payment->id)
+                ->update([
+                    'savings_amount' => 0.00,
+                    'updated_at' => now(),
+                ]);
+
+            // Update clients_loans savings_balance
+            $newSavingsBalance = (float) $loan->savings_balance - $oldSavings;
+            $newSavingsBalance = max(0, $newSavingsBalance);
+
+            DB::table('clients_loans')
+                ->where('id', $loan->id)
+                ->update([
+                    'savings_balance' => $newSavingsBalance,
+                    'updated_at' => now(),
+                ]);
+
+            DB::commit();
+            return response()->json(['message' => 'Savings reversed successfully.']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'Failed to reverse savings: ' . $e->getMessage()], 500);
+        }
+    }
+
 }

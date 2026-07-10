@@ -149,6 +149,9 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
     Route::post('/collections/savings/save', [AdminCollectionController::class, 'AdminSaveSavingsAmount'])
         ->name('admin.collections.savings.save');
 
+    Route::post('/collections/savings/reverse', [AdminCollectionController::class, 'AdminReverseSavingsAmount'])
+        ->name('admin.collections.savings.reverse');
+
     Route::post('/collections/payment/reverse', [AdminCollectionController::class, 'AdminReversePaymentCollection'])
         ->name('admin.collections.payment.reverse');
 
@@ -228,6 +231,9 @@ Route::middleware('role:secretary')->prefix('secretary')->name('secretary.')->gr
 
     Route::post('/collections/savings/save', [SecretaryCollectionController::class, 'SecretarySaveSavingsAmount'])
         ->name('collections.savings.save');
+
+    Route::post('/collections/savings/reverse', [SecretaryCollectionController::class, 'SecretaryReverseSavingsAmount'])
+        ->name('collections.savings.reverse');
 
     Route::post('/collections/payment/reverse', [SecretaryCollectionController::class, 'SecretaryReversePaymentCollection'])
         ->name('collections.payment.reverse');
