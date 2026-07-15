@@ -185,6 +185,7 @@
                             <th>Outstanding Balance</th>
                             <th>Daily Payment</th>
                             <th>Total Payment</th>
+                            <th>Savings</th>
                             <th>Daily OD</th>
                         </tr>
                     </thead>
@@ -198,10 +199,12 @@
                                 <td>{{ $dueDate->format('n/d/Y') }}</td>
                                 <td>{{ number_format($payment->balance_should_be, 2) }}</td>
                                 <td>{{ number_format($payment->outstanding_balance, 2) }}</td>
-
-                                <td>{{ number_format($payment->daily, 2) }}</td>
                                 <td>
                                     {{ is_numeric($payment->collection) && (float) $payment->collection > 0 ? number_format($payment->collection, 2) : '' }}
+                                </td>
+                                <td>{{ number_format($payment->total_payment, 2) }}</td>
+                                <td>
+                                    {{ is_numeric($payment->savings_amount) && (float) $payment->savings_amount > 0 ? number_format($payment->savings_amount, 2) : '' }}
                                 </td>
                                 <td>
                                     {{ $payment->daily_od > 0 ? ($payment->daily_od == (int) $payment->daily_od ? number_format($payment->daily_od, 0) : number_format($payment->daily_od, 2)) : '' }}
@@ -221,6 +224,7 @@
                             <th>Outstanding Balance</th>
                             <th>Daily Payment</th>
                             <th>Total Payment</th>
+                            <th>Savings</th>
                             <th>Daily OD</th>
                         </tr>
                     </thead>
@@ -238,6 +242,9 @@
                                     {{ is_numeric($payment->collection) && (float) $payment->collection > 0 ? number_format($payment->collection, 2) : '' }}
                                 </td>
                                 <td>{{ number_format($payment->total_payment, 2) }}</td>
+                                <td>
+                                    {{ is_numeric($payment->savings_amount) && (float) $payment->savings_amount > 0 ? number_format($payment->savings_amount, 2) : '' }}
+                                </td>
                                 <td>
                                     {{ $payment->daily_od > 0 ? ($payment->daily_od == (int) $payment->daily_od ? number_format($payment->daily_od, 0) : number_format($payment->daily_od, 2)) : '' }}
                                 </td>

@@ -255,6 +255,10 @@ class SecretaryCollectionController extends Controller
             return $c->loan->daily ?? 0;
         });
 
+        $totalSavings = $clients->sum(function ($c) {
+            return $c->payment->savings_amount ?? 0;
+        });
+
         return view('secretary.areas.collection_detail', [
             'clients' => $clients,
             'referenceNumber' => $referenceNumber,
@@ -263,6 +267,7 @@ class SecretaryCollectionController extends Controller
             'totalClients' => $totalClients,
             'totalCollections' => $totalCollections,
             'totalDailyCollectibles' => $totalDailyCollectibles,
+            'totalSavings' => $totalSavings,
             'selectedDate' => $selectedDate,
             'refNo' => $referenceNumber,
             'areaId' => $area->id

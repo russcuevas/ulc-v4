@@ -194,6 +194,9 @@ class AdminCollectionController extends Controller
         $totalDailyCollectibles = $clients->sum(function ($c) {
             return $c->loan->daily ?? 0;
         });
+        $totalSavings = $clients->sum(function ($c) {
+            return $c->payment->savings_amount ?? 0;
+        });
 
         return view('admin.areas.collection_detail', [
             'clients' => $clients,
@@ -203,6 +206,7 @@ class AdminCollectionController extends Controller
             'totalClients' => $totalClients,
             'totalCollections' => $totalCollections,
             'totalDailyCollectibles' => $totalDailyCollectibles,
+            'totalSavings' => $totalSavings,
             'selectedDate' => $selectedDate,
             'refNo' => $referenceNumber,
             'areaId' => $area->id

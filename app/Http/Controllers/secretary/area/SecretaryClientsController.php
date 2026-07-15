@@ -299,6 +299,7 @@ class SecretaryClientsController extends Controller
         // Get payments
         $payments = DB::table('clients_payments')
             ->where('client_loans_id', $loanId)
+            ->where('is_collected', 1)
             ->orderBy('due_date', 'asc')
             ->get();
 

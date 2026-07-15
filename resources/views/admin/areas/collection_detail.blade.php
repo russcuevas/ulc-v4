@@ -187,7 +187,12 @@
                                     </form>
                                 </div>
 
-                                <div class="col-md-4">
+                                @php
+                                    $isFC = stripos($location_name ?? '', 'Financial Counselor') !== false;
+                                    $colClass = $isFC ? 'col-md-3' : 'col-md-4';
+                                @endphp
+
+                                <div class="{{ $colClass }}">
                                     <div class="card border-0 shadow-sm h-100">
                                         <div class="card-body">
                                             <div class="d-flex align-items-center">
@@ -203,7 +208,7 @@
                                     </div>
                                 </div>
 
-                                <div class="col-md-4">
+                                <div class="{{ $colClass }}">
                                     <div class="card border-0 shadow-sm h-100">
                                         <div class="card-body">
                                             <div class="d-flex align-items-center">
@@ -222,7 +227,7 @@
                                     </div>
                                 </div>
 
-                                <div class="col-md-4">
+                                <div class="{{ $colClass }}">
                                     <div class="card border-0 shadow-sm h-100">
                                         <div class="card-body">
                                             <div class="d-flex align-items-center">
@@ -240,6 +245,26 @@
                                         </div>
                                     </div>
                                 </div>
+
+                                @if ($isFC)
+                                    <div class="{{ $colClass }}">
+                                        <div class="card border-0 shadow-sm h-100">
+                                            <div class="card-body">
+                                                <div class="d-flex align-items-center">
+                                                    <div
+                                                        class="flex-shrink-0 p-3 rounded-circle" style="background-color: rgba(13, 110, 253, 0.1); color: #0d6efd;">
+                                                        <i class="fas fa-piggy-bank fa-lg"></i>
+                                                    </div>
+                                                    <div class="flex-grow-1 ms-3">
+                                                        <p class="text-muted mb-0 small uppercase">Total Savings</p>
+                                                        <h4 class="mb-0 fw-bold text-primary">
+                                                            ₱{{ number_format($totalSavings, 2) }}</h4>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
 
                             </div>
                             <div class="d-flex justify-content-between align-items-center mb-3">

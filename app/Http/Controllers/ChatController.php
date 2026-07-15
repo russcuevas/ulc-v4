@@ -576,7 +576,12 @@ class ChatController extends Controller
                 }
                 
                 if ($statusText === 'unpaid' || $statusText === 'active' || $statusText === 'lapsed') {
-                    $totalSavings += $loan->savings_balance;
+                    $pendingSavings = DB::table('clients_payments')
+                        ->where('client_loans_id', $loan->id)
+                        ->where('is_collected', 0)
+                        ->sum('savings_amount') ?? 0;
+                    $actualSavings = max(0, $loan->savings_balance - $pendingSavings);
+                    $totalSavings += $actualSavings;
                 }
             }
 

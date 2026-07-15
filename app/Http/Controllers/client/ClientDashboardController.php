@@ -34,6 +34,15 @@ class ClientDashboardController extends Controller
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($loan) {
+                // Fetch sum of pending savings for this loan
+                $pendingSavings = DB::table('clients_payments')
+                    ->where('client_loans_id', $loan->id)
+                    ->where('is_collected', 0)
+                    ->sum('savings_amount') ?? 0;
+
+                // Adjust savings_balance for the dashboard to exclude pending savings
+                $loan->savings_balance = max(0, $loan->savings_balance - $pendingSavings);
+
                 // If database balance is fully settled, mark display status as paid
                 if ($loan->balance <= 0) {
                     $loan->status = 'paid';
