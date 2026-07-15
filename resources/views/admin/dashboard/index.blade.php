@@ -149,6 +149,19 @@
             color: #dc3545 !important;
             font-weight: 700;
         }
+
+        .view-payments {
+            color: #FF5F00 !important;
+            font-weight: 600;
+            text-decoration: underline;
+            cursor: pointer;
+            transition: color 0.15s ease-in-out;
+        }
+
+        .view-payments:hover {
+            color: #e65500 !important;
+            text-decoration: underline !important;
+        }
     </style>
 </head>
 
@@ -353,7 +366,11 @@
                             <tbody>
                                 @forelse ($locationSummaries as $location)
                                     <tr>
-                                        <td>{{ $location->location_name }}</td>
+                                        <td>
+                                            <a href="javascript:void(0)" class="view-payments" data-type="location" data-name="{{ $location->location_name }}">
+                                                {{ $location->location_name }}
+                                            </a>
+                                        </td>
                                         <td>{{ number_format($location->total_clients) }}</td>
                                         <td>{{ number_format($location->total_loans) }}</td>
                                         <td>{{ number_format($location->new_loan_count ?? 0) }}</td>
@@ -413,7 +430,11 @@
                                 @forelse ($areaSummaries as $area)
                                     <tr>
                                         <td>{{ $area->location_name }}</td>
-                                        <td>{{ $area->areas_name }}</td>
+                                        <td>
+                                            <a href="javascript:void(0)" class="view-payments" data-type="area" data-name="{{ $area->areas_name }}">
+                                                {{ $area->areas_name }}
+                                            </a>
+                                        </td>
                                         <td>{{ number_format($area->total_clients) }}</td>
                                         <td>{{ number_format($area->total_loans) }}</td>
                                         <td>{{ number_format($area->new_loan_count ?? 0) }}</td>
@@ -456,6 +477,65 @@
             </div>
         </div>
     </div>
+
+    <!-- Payments Detail Modal -->
+    <div class="modal fade" id="paymentsDetailModal" tabindex="-1" role="dialog"
+        aria-labelledby="paymentsDetailModalLabel" aria-hidden="true" style="background-color: rgba(0,0,0,0.5); z-index: 1060;">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
+            <div class="modal-content" style="border-top: 4px solid #FF5F00; border-radius: 8px;">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="paymentsDetailModalLabel">
+                        <i class="fas fa-money-bill-wave mr-1 text-success"></i> Payment Collection Details: <span id="paymentDetailsTargetName" class="text-primary"></span>
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="text-muted font-italic" id="paymentDetailsRangeInfo"></span>
+                        <span class="badge badge-info" id="paymentDetailsCountBadge" style="background-color: #FF5F00; font-size: 14px; padding: 6px 12px;">0 Payments</span>
+                    </div>
+                    <div id="paymentsLoader" class="text-center my-5">
+                        <div class="spinner-border text-primary" role="status" style="color: #FF5F00 !important;">
+                            <span class="sr-only">Loading...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Retrieving payment details...</p>
+                    </div>
+                    <div id="paymentsError" class="alert alert-danger" style="display: none;">
+                        <i class="fas fa-exclamation-triangle mr-1"></i> Failed to retrieve payment details. Please try again.
+                    </div>
+                    <div class="table-responsive" id="paymentsTableContainer" style="display: none;">
+                        <table class="table table-bordered table-striped table-hover">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Client Name</th>
+                                    <th>Location</th>
+                                    <th>Area</th>
+                                    <th>Amount Paid</th>
+                                    <th>Collector</th>
+                                    <th>Payment Date</th>
+                                </tr>
+                            </thead>
+                            <tbody id="paymentsDetailBody">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                            <tfoot>
+                                <tr class="font-weight-bold" style="background-color: #f8f9fa;">
+                                    <td colspan="3" class="text-right">TOTAL COLLECTION:</td>
+                                    <td id="paymentDetailsTotalAmount" colspan="3" class="text-success" style="font-size: 16px;">P0.00</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <!-- ./wrapper -->
 
@@ -624,6 +704,93 @@
 
         $(function() {
             buildCharts();
+
+            // Click handler to view payment details
+            $('.view-payments').on('click', function(e) {
+                e.preventDefault();
+                const type = $(this).data('type');
+                const name = $(this).data('name');
+                
+                // Get filter dates from the DOM
+                const fromDate = $('input[name="from"]').val();
+                const toDate = $('input[name="to"]').val();
+                
+                $('#paymentDetailsTargetName').text(name + ' (' + (type === 'location' ? 'Location' : 'Area') + ')');
+                
+                // Date range display text
+                if (fromDate && toDate) {
+                    $('#paymentDetailsRangeInfo').text('Date Range: ' + fromDate + ' to ' + toDate);
+                } else {
+                    $('#paymentDetailsRangeInfo').text('All Time Collection');
+                }
+                
+                // Show loader and hide content
+                $('#paymentsLoader').show();
+                $('#paymentsError').hide();
+                $('#paymentsTableContainer').hide();
+                
+                // Open the modal
+                $('#paymentsDetailModal').modal('show');
+                
+                // Ajax call to retrieve detailed payments list
+                $.ajax({
+                    url: "{{ route('admin.dashboard.payment_details') }}",
+                    method: 'GET',
+                    data: {
+                        type: type,
+                        name: name,
+                        from: fromDate,
+                        to: toDate
+                    },
+                    success: function(response) {
+                        $('#paymentsLoader').hide();
+                        
+                        if (response && response.length > 0) {
+                            let rows = '';
+                            let total = 0;
+                            
+                            response.forEach(function(payment) {
+                                const amountFloat = parseFloat(payment.amount) || 0;
+                                total += amountFloat;
+                                
+                                const paymentDate = payment.due_date ? payment.due_date : 'N/A';
+                                const collector = payment.collector_name ? payment.collector_name : 'N/A';
+                                
+                                rows += '<tr>' +
+                                    '<td>' + (payment.client_name || 'N/A') + '</td>' +
+                                    '<td>' + (payment.location_name || 'N/A') + '</td>' +
+                                    '<td>' + (payment.areas_name || 'N/A') + '</td>' +
+                                    '<td class="text-success font-weight-bold">P' + amountFloat.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</td>' +
+                                    '<td>' + collector + '</td>' +
+                                    '<td>' + paymentDate + '</td>' +
+                                    '</tr>';
+                            });
+                            
+                            $('#paymentsDetailBody').html(rows);
+                            $('#paymentDetailsTotalAmount').text('P' + total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+                            $('#paymentDetailsCountBadge').text(response.length + ' Payment(s)');
+                            $('#paymentsTableContainer').show();
+                        } else {
+                            $('#paymentsDetailBody').html('<tr><td colspan="6" class="text-center text-muted">No payments found for this criteria.</td></tr>');
+                            $('#paymentDetailsTotalAmount').text('P0.00');
+                            $('#paymentDetailsCountBadge').text('0 Payments');
+                            $('#paymentsTableContainer').show();
+                        }
+                    },
+                    error: function(err) {
+                        $('#paymentsLoader').hide();
+                        $('#paymentsError').show();
+                        console.error('Error fetching payments:', err);
+                    }
+                });
+            });
+            
+            // Fix nested modal scrollbar issue in Bootstrap 4
+            $(document).on('hidden.bs.modal', '#paymentsDetailModal', function () {
+                if ($('#breakdownDetailsModal').hasClass('show')) {
+                    $('body').addClass('modal-open');
+                }
+            });
         });
     </script>
 </body>

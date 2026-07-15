@@ -210,4 +210,46 @@ class AdminDashboardController extends Controller
             'selectedArea'
         ));
     }
+
+    public function getPaymentDetails(Request $request)
+    {
+        $type = $request->query('type'); // 'location' or 'area'
+        $name = $request->query('name'); // e.g. 'Caloocan Area' or 'CA1'
+        $from = $request->query('from');
+        $to = $request->query('to');
+
+        $isFiltered = $from
+            && $to
+            && Carbon::hasFormat($from, 'Y-m-d')
+            && Carbon::hasFormat($to, 'Y-m-d');
+
+        $query = DB::table('clients_payments as cp')
+            ->join('clients as c', 'cp.client_id', '=', 'c.id')
+            ->join('areas as a', 'cp.client_area', '=', 'a.id')
+            ->leftJoin('collectors as col', 'cp.collected_by', '=', 'col.id')
+            ->where('cp.is_collected', 1)
+            ->when($isFiltered, fn($q) => $q->whereBetween('cp.due_date', [$from, $to]));
+
+        if ($type === 'location') {
+            $query->where('a.location_name', $name);
+        } else {
+            $query->where('a.areas_name', $name);
+        }
+
+        $payments = $query->select([
+            'c.fullname as client_name',
+            'a.location_name',
+            'a.areas_name',
+            'cp.collection as amount',
+            'cp.due_date',
+            'cp.created_at',
+            'col.fullname as collector_name'
+        ])
+        ->orderBy('cp.due_date', 'desc')
+        ->orderBy('c.fullname', 'asc')
+        ->get();
+
+        return response()->json($payments);
+    }
 }
+
