@@ -70,15 +70,56 @@
             border: none;
         }
 
+        .print-btn-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
+
+        .btn-print {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-family: Arial, sans-serif;
+            text-decoration: none;
+        }
+
+        .btn-print:hover {
+            background-color: #0056b3;
+        }
+
         @media print {
             body {
                 margin: 10px;
+            }
+            .no-print {
+                display: none !important;
             }
         }
     </style>
 </head>
 
 <body>
+
+    <div class="print-btn-container no-print">
+        <button onclick="window.print()" class="btn-print">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-printer" viewBox="0 0 16 16">
+                <path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z"/>
+                <path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2H5zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4V3zm1 5a2 2 0 0 0-2 2v1H2a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v-1a2 2 0 0 0-2-2H5zm7 2v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1z"/>
+            </svg>
+            Print
+        </button>
+    </div>
 
     <div class="container">
 
@@ -264,14 +305,7 @@
         <p>Printed on: {{ now()->format('F j, Y h:i A') }}</p>
     </div>
 
-    <script>
-        window.onload = function() {
-            window.print();
-        };
-        window.onafterprint = function() {
-            window.close();
-        };
-    </script>
+
 
 </body>
 
