@@ -232,147 +232,153 @@
                                     </div>
                                     <input type="hidden" id="currentFilter" value="normal">
                                     @csrf
-                                    <table id="manilaTable" class="table table-bordered table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th>Client Name</th>
-                                                <th>Due Date</th>
-                                                <th>Balance</th>
-                                                <th>Daily</th>
-                                                <th>Collection</th>
-                                                @if (stripos($area->location_name ?? '', 'Financial Counselor') !== false)
-                                                    <th>Savings</th>
-                                                @endif
-                                                <th>Type</th>
-                                                <th>Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach ($clients as $client)
-                                                <tr class="{{ $client->is_overdue ? 'table-danger' : '' }}"
-                                                    data-status="{{ $client->is_overdue ? 'lapsed' : 'normal' }}"
-                                                    data-client-id="{{ $client->id }}"
-                                                    data-loan-id="{{ $client->loan->id ?? '' }}"
-                                                    data-area-id="{{ $client->area_id }}"
-                                                    data-daily="{{ $client->loan->daily ?? 0 }}">
-                                                    <td>{{ $client->fullname }}</td>
-
-                                                    {{-- Due Date --}}
-                                                    <td>
-                                                        @if ($client->payment)
-                                                            {{ \Carbon\Carbon::parse($client->payment->due_date)->format('Y-m-d') }}
-                                                        @else
-                                                            <input type="date" value="{{ $selectedDate }}"
-                                                                readonly class="form-control">
-                                                        @endif
-                                                    </td>
-
-                                                    {{-- Balance --}}
-                                                    <td>
-                                                        ₱{{ number_format($client->loan->balance ?? 0, 2) }}
-                                                    </td>
-
-                                                    {{-- Daily --}}
-                                                    <td>
-                                                        @if ($client->payment)
-                                                            ₱{{ number_format($client->payment->daily, 2) }}
-                                                        @else
-                                                            ₱{{ number_format($client->loan->daily ?? 0, 2) }}
-                                                        @endif
-                                                    </td>
-
-                                                    {{-- Collection --}}
-                                                    @if ($client->payment && !(is_null($client->payment->collection) && is_null($client->payment->type)))
-                                                        <td>
-                                                            @if (is_null($client->payment->collection))
-                                                                0
-                                                            @else
-                                                                ₱{{ number_format($client->payment->collection, 2) }}
-                                                            @endif
-                                                        </td>
-
-                                                        @if (stripos($area->location_name ?? '', 'Financial Counselor') !== false)
-                                                            <td>
-                                                                ₱{{ number_format($client->payment->savings_amount ?? 0, 2) }}
-                                                            </td>
-                                                        @endif
-
-                                                        <td>
-                                                            {{ $client->payment->type ?? '-' }}
-                                                        </td>
-
-                                                        {{-- STATUS --}}
-                                                        <td>
-                                                            @if ($client->isPaid)
-                                                                <span class="badge badge-primary">Paid Loan</span>
-                                                            @elseif ($client->payment->type === 'NO PAYMENT' || $client->payment->collection == 0)
-                                                                <span class="badge badge-danger">NO PAYMENT</span>
-                                                            @elseif ($client->payment->is_collected == 1)
-                                                                <span class="badge badge-success">Collected</span>
-                                                            @else
-                                                                <span class="badge badge-info">To Collect</span>
-                                                            @endif
-                                                        </td>
-                                                    @else
-                                                        <td>
-                                                            <form action="{{ route('collector.collections.store') }}"
-                                                                method="POST">
-                                                                @csrf
-                                                                <input type="number" step="0.01"
-                                                                    name="collection" class="form-control"
-                                                                    min="1" placeholder="Enter amount if any">
-
-                                                                <!-- Helper text -->
-                                                                <small class="form-text" style="color: brown">Leave
-                                                                    blank if no
-                                                                    payment.</small>
-
-                                                        </td>
-
-                                                        @if (stripos($area->location_name ?? '', 'Financial Counselor') !== false)
-                                                            <td>
-                                                                <input type="number" step="0.01" name="savings"
-                                                                    class="form-control" min="0"
-                                                                    placeholder="Enter savings if any">
-                                                            </td>
-                                                        @endif
-
-                                                        <td>
-                                                            <select name="type" class="form-control" required>
-                                                                <option value="">Select</option>
-                                                                <option value="CASH">CASH</option>
-                                                                <option value="GCASH">GCASH</option>
-                                                                <option value="CHEQUE">CHEQUE</option>
-                                                            </select>
-                                                        </td>
-
-                                                        <td>
-                                                            <button type="submit" class="btn btn-success btn-sm">
-                                                                Save collection
-                                                            </button>
-
-                                                            {{-- Hidden Fields --}}
-                                                            <input type="hidden" name="client_id"
-                                                                value="{{ $client->id }}">
-                                                            <input type="hidden" name="loan_id"
-                                                                value="{{ $client->loan->id ?? '' }}">
-                                                            <input type="hidden" name="area_id"
-                                                                value="{{ $client->area_id }}">
-                                                            <input type="hidden" name="reference_no"
-                                                                value="{{ $refNo }}">
-                                                            <input type="hidden" name="due_date"
-                                                                value="{{ $selectedDate }}">
-                                                            <input type="hidden" name="old_balance"
-                                                                value="{{ $client->loan->balance ?? 0 }}">
-                                                            <input type="hidden" name="daily"
-                                                                value="{{ $client->loan->daily ?? 0 }}">
-                                                            </form>
-                                                        </td>
+                                    <div class="table-responsive">
+                                        <table id="manilaTable" class="table table-bordered table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Client Name</th>
+                                                    <th>Due Date</th>
+                                                    <th>Balance</th>
+                                                    <th>Daily</th>
+                                                    <th>Collection</th>
+                                                    @if (stripos($area->location_name ?? '', 'Financial Counselor') !== false)
+                                                        <th>Savings</th>
                                                     @endif
+                                                    <th>Type</th>
+                                                    <th>Status</th>
                                                 </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
+                                            </thead>
+                                            <tbody>
+                                                @foreach ($clients as $client)
+                                                    <tr class="{{ $client->is_overdue ? 'table-danger' : '' }}"
+                                                        data-status="{{ $client->is_overdue ? 'lapsed' : 'normal' }}"
+                                                        data-client-id="{{ $client->id }}"
+                                                        data-loan-id="{{ $client->loan->id ?? '' }}"
+                                                        data-area-id="{{ $client->area_id }}"
+                                                        data-daily="{{ $client->loan->daily ?? 0 }}">
+                                                        <td>{{ $client->fullname }}</td>
+
+                                                        {{-- Due Date --}}
+                                                        <td>
+                                                            @if ($client->payment)
+                                                                {{ \Carbon\Carbon::parse($client->payment->due_date)->format('Y-m-d') }}
+                                                            @else
+                                                                <input type="date" value="{{ $selectedDate }}"
+                                                                    readonly class="form-control">
+                                                            @endif
+                                                        </td>
+
+                                                        {{-- Balance --}}
+                                                        <td>
+                                                            ₱{{ number_format($client->loan->balance ?? 0, 2) }}
+                                                        </td>
+
+                                                        {{-- Daily --}}
+                                                        <td>
+                                                            @if ($client->payment)
+                                                                ₱{{ number_format($client->payment->daily, 2) }}
+                                                            @else
+                                                                ₱{{ number_format($client->loan->daily ?? 0, 2) }}
+                                                            @endif
+                                                        </td>
+
+                                                        {{-- Collection --}}
+                                                        @if ($client->payment && !(is_null($client->payment->collection) && is_null($client->payment->type)))
+                                                            <td>
+                                                                @if (is_null($client->payment->collection))
+                                                                    0
+                                                                @else
+                                                                    ₱{{ number_format($client->payment->collection, 2) }}
+                                                                @endif
+                                                            </td>
+
+                                                            @if (stripos($area->location_name ?? '', 'Financial Counselor') !== false)
+                                                                <td>
+                                                                    ₱{{ number_format($client->payment->savings_amount ?? 0, 2) }}
+                                                                </td>
+                                                            @endif
+
+                                                            <td>
+                                                                {{ $client->payment->type ?? '-' }}
+                                                            </td>
+
+                                                            {{-- STATUS --}}
+                                                            <td>
+                                                                @if ($client->isPaid)
+                                                                    <span class="badge badge-primary">Paid Loan</span>
+                                                                @elseif ($client->payment->type === 'NO PAYMENT' || $client->payment->collection == 0)
+                                                                    <span class="badge badge-danger">NO PAYMENT</span>
+                                                                @elseif ($client->payment->is_collected == 1)
+                                                                    <span class="badge badge-success">Collected</span>
+                                                                @else
+                                                                    <span class="badge badge-info">To Collect</span>
+                                                                @endif
+                                                            </td>
+                                                        @else
+                                                            <td>
+                                                                <form
+                                                                    action="{{ route('collector.collections.store') }}"
+                                                                    method="POST">
+                                                                    @csrf
+                                                                    <input type="number" step="0.01"
+                                                                        name="collection" class="form-control"
+                                                                        min="1"
+                                                                        placeholder="Enter amount if any">
+
+                                                                    <!-- Helper text -->
+                                                                    <small class="form-text"
+                                                                        style="color: brown">Leave
+                                                                        blank if no
+                                                                        payment.</small>
+
+                                                            </td>
+
+                                                            @if (stripos($area->location_name ?? '', 'Financial Counselor') !== false)
+                                                                <td>
+                                                                    <input type="number" step="0.01"
+                                                                        name="savings" class="form-control"
+                                                                        min="0"
+                                                                        placeholder="Enter savings if any">
+                                                                </td>
+                                                            @endif
+
+                                                            <td>
+                                                                <select name="type" class="form-control" required>
+                                                                    <option value="">Select</option>
+                                                                    <option value="CASH">CASH</option>
+                                                                    <option value="GCASH">GCASH</option>
+                                                                    <option value="CHEQUE">CHEQUE</option>
+                                                                </select>
+                                                            </td>
+
+                                                            <td>
+                                                                <button type="submit" class="btn btn-success btn-sm">
+                                                                    Save collection
+                                                                </button>
+
+                                                                {{-- Hidden Fields --}}
+                                                                <input type="hidden" name="client_id"
+                                                                    value="{{ $client->id }}">
+                                                                <input type="hidden" name="loan_id"
+                                                                    value="{{ $client->loan->id ?? '' }}">
+                                                                <input type="hidden" name="area_id"
+                                                                    value="{{ $client->area_id }}">
+                                                                <input type="hidden" name="reference_no"
+                                                                    value="{{ $refNo }}">
+                                                                <input type="hidden" name="due_date"
+                                                                    value="{{ $selectedDate }}">
+                                                                <input type="hidden" name="old_balance"
+                                                                    value="{{ $client->loan->balance ?? 0 }}">
+                                                                <input type="hidden" name="daily"
+                                                                    value="{{ $client->loan->daily ?? 0 }}">
+                                                                </form>
+                                                            </td>
+                                                        @endif
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
                                     <div id="lazyLoader" class="text-center py-3" style="display: none;">
                                         <div class="spinner-border text-primary" role="status"
                                             style="color: #FF5F00 !important;">
@@ -442,7 +448,7 @@
                 "paging": false,
                 "searching": true,
                 "ordering": true,
-                "responsive": true
+                "responsive": false
             });
 
             // Custom filter using data-status attribute on <tr>
