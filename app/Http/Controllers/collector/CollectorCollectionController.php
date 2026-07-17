@@ -111,6 +111,11 @@ class CollectorCollectionController extends Controller
             return $client->loan->daily ?? 0;
         });
 
+        $totalSavings = DB::table('clients_payments')
+            ->whereDate('due_date', $selectedDate)
+            ->whereIn('client_id', $clients->pluck('id')->toArray())
+            ->sum('savings_amount');
+
         return view('collector.collection.index', compact(
             'clients',
             'area',
@@ -119,6 +124,7 @@ class CollectorCollectionController extends Controller
             'totalClients',
             'totalCollections',
             'totalDailyCollectibles',
+            'totalSavings',
             'myAreas',
             'selectedAreaId'
         ));
