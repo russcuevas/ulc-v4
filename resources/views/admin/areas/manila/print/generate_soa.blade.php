@@ -174,11 +174,13 @@
                 <th>PN AMOUNT</th>
                 <th>DUE DATE</th>
                 <th>TERMS</th>
+                <th>TOTAL SAVINGS</th>
             </tr>
             <tr>
                 <td>₱{{ number_format($loan->loan_amount, 2) }}</td>
                 <td>{{ \Carbon\Carbon::parse($loan->loan_to)->format('M d, Y') }}</td>
                 <td>{{ $loan->loan_terms ?? 'N/A' }}</td>
+                <td>₱{{ number_format($payments->sum('savings_amount'), 2) }}</td>
             </tr>
         </table>
 
