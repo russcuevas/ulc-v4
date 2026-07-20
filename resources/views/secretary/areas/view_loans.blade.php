@@ -112,12 +112,12 @@
                                     </p>
 
                                     @php
-                                         $latestLoan = $loans->sortByDesc('created_at')->first();
-                                         $canRenew =
-                                             $latestLoan &&
-                                             $latestLoan->balance == 0 &&
-                                             strtolower($latestLoan->status) === 'paid';
-                                     @endphp
+                                        $latestLoan = $loans->sortByDesc('created_at')->first();
+                                        $canRenew =
+                                            $latestLoan &&
+                                            $latestLoan->balance == 0 &&
+                                            strtolower($latestLoan->status) === 'paid';
+                                    @endphp
 
                                     <button class="btn btn-sm btn-warning mb-2" data-toggle="modal"
                                         data-target="#editClientModal">
@@ -145,18 +145,19 @@
                         <!-- RIGHT: LOAN TABLE -->
                         <div class="col-md-9">
                             <div class="card card-primary card-outline">
-                                    <div class="card-header">
-                                                                    <div class="d-flex justify-content-between align-items-center w-100">
+                                <div class="card-header">
+                                    <div class="d-flex justify-content-between align-items-center w-100">
 
                                         <span>
                                             <i class="fas fa-file-invoice-dollar"></i> Loan History
                                         </span>
-                                        <a href="{{ route('secretary.area.clients.print_summary_loan', $client->id) }}" target="_blank" class="btn btn-sm btn-info">
+                                        <a href="{{ route('secretary.area.clients.print_summary_loan', $client->id) }}"
+                                            target="_blank" class="btn btn-sm btn-info">
                                             <i class="fas fa-print"></i> Print Summary Loan
                                         </a>
-                                                                    </div>
                                     </div>
-                                    
+                                </div>
+
 
                                 <div class="card-body table-responsive">
                                     <table id="loanTable" class="table table-bordered table-striped">
@@ -199,10 +200,11 @@
 
                                                     <td>₱{{ number_format($loan->loan_amount, 2) }}</td>
                                                     <td>₱{{ number_format($loan->balance, 2) }}</td>
-                                                     @if (stripos($location_name, 'Financial Counselor') !== false)
-                                                         <td>₱{{ number_format(($loan->balance <= 0 || $loan->status === 'paid' || $loan->status === 'settled') ? 0 : $loan->savings_balance, 2) }}</td>
-                                                     @endif
-                                                     <td>₱{{ number_format($loan->daily, 2) }}</td>
+                                                    @if (stripos($location_name, 'Financial Counselor') !== false)
+                                                        <td>₱{{ number_format($loan->balance <= 0 || $loan->status === 'paid' || $loan->status === 'settled' ? 0 : $loan->savings_balance, 2) }}
+                                                        </td>
+                                                    @endif
+                                                    <td>₱{{ number_format($loan->daily, 2) }}</td>
 
                                                     <td>
                                                         <span
@@ -216,12 +218,17 @@
                                                             target="_blank" class="btn btn-sm btn-primary">
                                                             Generate SOA
                                                         </a>
+                                                        <a href="{{ route('secretary.area.clients.backlog.collections', $loan->id) }}"
+                                                            class="btn btn-sm btn-warning">
+                                                            Backlog Collections
+                                                        </a>
                                                     </td>
 
                                                 </tr>
                                             @empty
                                                 <tr>
-                                                    <td colspan="{{ stripos($location_name, 'Financial Counselor') !== false ? 11 : 10 }}" class="text-center">No loans found.</td>
+                                                    <td colspan="{{ stripos($location_name, 'Financial Counselor') !== false ? 11 : 10 }}"
+                                                        class="text-center">No loans found.</td>
                                                 </tr>
                                             @endforelse
                                         </tbody>
@@ -297,7 +304,8 @@
                 var isLoadPending = false;
                 var loaderId = tableId.replace('#', '') + '_lazyLoader';
 
-                var loaderHtml = '<div id="' + loaderId + '" class="text-center py-3 lazy-loader-indicator" style="display: none;">' +
+                var loaderHtml = '<div id="' + loaderId +
+                    '" class="text-center py-3 lazy-loader-indicator" style="display: none;">' +
                     '<div class="spinner-border text-primary" role="status" style="color: #FF5F00 !important;">' +
                     '<span class="sr-only">Loading...</span>' +
                     '</div>' +
@@ -305,7 +313,8 @@
                 $(tableId).after(loaderHtml);
 
                 if ($('#lazy-hidden-style').length === 0) {
-                    $('head').append('<style id="lazy-hidden-style">.lazy-hidden { display: none !important; }</style>');
+                    $('head').append(
+                        '<style id="lazy-hidden-style">.lazy-hidden { display: none !important; }</style>');
                 }
 
                 function applyLazyLoading() {

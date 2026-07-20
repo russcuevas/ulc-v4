@@ -309,4 +309,129 @@ class SecretaryClientsController extends Controller
             'payments'
         ));
     }
+
+    public function SecretaryBacklogCollections($loanId)
+    {
+        // Get loan
+        $loan = DB::table('clients_loans')
+            ->select(
+                'id',
+                'client_id',
+                'pn_number',
+                'release_number',
+                'loan_amount',
+                'balance',
+                'daily',
+                'loan_from',
+                'loan_to',
+                'loan_terms',
+            )
+            ->where('id', $loanId)
+            ->first();
+
+        if (!$loan) {
+            return back()->with('error', 'Loan not found.');
+        }
+
+        // Get client with area info
+        $client = DB::table('clients')
+            ->leftJoin('areas', 'clients.area_id', '=', 'areas.id')
+            ->where('clients.id', $loan->client_id)
+            ->select(
+                'clients.*',
+                'areas.location_name',
+                'areas.areas_name'
+            )
+            ->first();
+
+        // Get payments
+        $payments = DB::table('clients_payments')
+            ->where('client_loans_id', $loanId)
+            ->get()
+            ->keyBy('due_date');
+
+        // Generate date list from loan_from to loan_to
+        $startDate = \Carbon\Carbon::parse($loan->loan_from);
+        $endDate = \Carbon\Carbon::parse($loan->loan_to);
+
+        $dateList = [];
+        $tempDate = $startDate->copy();
+        while ($tempDate->lte($endDate)) {
+            $dateList[] = $tempDate->format('Y-m-d');
+            $tempDate->addDay();
+        }
+
+        // Include any due_date after loan_to if a payment record exists
+        foreach ($payments as $dueDate => $payment) {
+            if (!in_array($dueDate, $dateList)) {
+                $dateList[] = $dueDate;
+            }
+        }
+
+        // Sort chronologically
+        usort($dateList, function($a, $b) {
+            return strcmp($a, $b);
+        });
+
+        // Compute grids with pre-generated reference numbers
+        $runningPayment = 0;
+        $paymentsGrid = [];
+
+        foreach ($dateList as $index => $dateStr) {
+            $payment = $payments->get($dateStr) ?? null;
+            $collectionVal = ($payment && is_numeric($payment->collection)) ? (float) $payment->collection : 0.0;
+            
+            $isCollected = ($payment && $payment->is_collected == 1);
+            if ($isCollected) {
+                $runningPayment += $collectionVal;
+            }
+
+            $outstandingBalance = max(0, $loan->loan_amount - $runningPayment);
+
+            $dueDate = \Carbon\Carbon::parse($dateStr);
+            $loanStart = \Carbon\Carbon::parse($loan->loan_from);
+            $days = $dueDate->lessThan($loanStart) ? 0 : $loanStart->diffInDays($dueDate, false) + 1;
+            $balanceShouldBe = max(0, $loan->loan_amount - $days * ($loan->daily ?? 0));
+
+            $dailyOd = max(0, $outstandingBalance - $balanceShouldBe);
+
+            // Pre-calculate reference number
+            $refNo = $payment ? $payment->reference_number : null;
+            if (!$refNo) {
+                // Check if any other payment in the same area exists on this date
+                $refNo = DB::table('clients_payments')
+                    ->where('due_date', $dateStr)
+                    ->where('client_area', $client->area_id)
+                    ->whereNotNull('reference_number')
+                    ->value('reference_number');
+
+                if (!$refNo) {
+                    $refNo = 'REF-' . $client->area_id . '-' . str_replace('-', '', $dateStr) . '-' . strtoupper(bin2hex(random_bytes(3)));
+                }
+            }
+
+            $paymentsGrid[] = (object)[
+                'index' => $index + 1,
+                'date' => $dateStr,
+                'payment_id' => $payment ? $payment->id : null,
+                'collection' => $payment ? $payment->collection : null,
+                'type' => $payment ? $payment->type : null,
+                'savings_amount' => $payment ? $payment->savings_amount : null,
+                'is_collected' => $isCollected ? 1 : 0,
+                'balance_should_be' => $balanceShouldBe,
+                'outstanding_balance' => $outstandingBalance,
+                'total_payment' => $runningPayment,
+                'daily_od' => $dailyOd,
+                'reference_number' => $refNo
+            ];
+        }
+
+        $paymentsGrid = array_slice($paymentsGrid, 0, 100);
+
+        return view('secretary.areas.backlog_collections', compact(
+            'loan',
+            'client',
+            'paymentsGrid'
+        ));
+    }
 }

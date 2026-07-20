@@ -127,7 +127,7 @@
         const fromDate = this.value;
         if (fromDate) {
             const date = new Date(fromDate);
-            date.setDate(date.getDate() + 100);
+            date.setDate(date.getDate() + 99);
             const toDate = date.toISOString().split('T')[0];
             document.getElementById('renew_loan_to').value = toDate;
         }

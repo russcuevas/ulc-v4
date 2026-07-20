@@ -130,6 +130,9 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
     Route::get('/areas/clients/soa/{loanId}', [AdminManilaClientsController::class, 'AdminManilaGenerateSOA'])
         ->name('admin.area.clients.generate.soa');
 
+    Route::get('/areas/clients/backlog-collections/{loanId}', [AdminManilaClientsController::class, 'AdminManilaBacklogCollections'])
+        ->name('admin.area.clients.backlog.collections');
+
     Route::get('/areas/{areaId}/collections', [AdminCollectionController::class, 'AdminCollectionReferencesPage'])
         ->name('admin.areas.collections.references');
 
@@ -216,6 +219,9 @@ Route::middleware('role:secretary')->prefix('secretary')->name('secretary.')->gr
     // PRINT SOA
     Route::get('/areas/clients/soa/{loanId}', [SecretaryClientsController::class, 'SecretaryGenerateSOA'])
         ->name('area.clients.generate.soa');
+
+    Route::get('/areas/clients/backlog-collections/{loanId}', [SecretaryClientsController::class, 'SecretaryBacklogCollections'])
+        ->name('area.clients.backlog.collections');
 
     // AREAS COLLECTION PAGE
     Route::get('/areas/{areaId}/collections', [SecretaryCollectionController::class, 'SecretaryCollectionReferencesPage'])

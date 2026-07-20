@@ -215,6 +215,10 @@
                                                             target="_blank" class="btn btn-sm btn-primary">
                                                             Generate SOA
                                                         </a>
+                                                        <a href="{{ route('admin.area.clients.backlog.collections', $loan->id) }}"
+                                                            class="btn btn-sm btn-warning">
+                                                            Backlog Collections
+                                                        </a>
                                                     </td>
 
                                                 </tr>
