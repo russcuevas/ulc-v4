@@ -168,7 +168,8 @@
                             <h1 class="m-0">Backlog Collections Manager</h1>
                         </div>
                         <div class="col-sm-6 text-right">
-                            <a href="{{ route('area.clients.loans', $client->id) }}" class="btn btn-secondary btn-sm">
+                            <a href="{{ route('secretary.area.clients.loans', $client->id) }}"
+                                class="btn btn-secondary btn-sm">
                                 <i class="fas fa-arrow-left mr-1"></i> Back to Client Loans
                             </a>
                         </div>
@@ -249,9 +250,11 @@
                                             <tbody>
                                                 <tr>
                                                     <td>₱{{ number_format($loan->loan_amount, 2) }}</td>
-                                                    <td>{{ \Carbon\Carbon::parse($loan->loan_to)->format('M d, Y') }}</td>
+                                                    <td>{{ \Carbon\Carbon::parse($loan->loan_to)->format('M d, Y') }}
+                                                    </td>
                                                     <td>{{ $loan->loan_terms ?? 'N/A' }}</td>
-                                                    <td>₱{{ number_format(collect($paymentsGrid)->take(100)->sum('savings_amount'), 2) }}</td>
+                                                    <td>₱{{ number_format(collect($paymentsGrid)->take(100)->sum('savings_amount'), 2) }}
+                                                    </td>
                                                 </tr>
                                             </tbody>
                                         </table>
@@ -259,7 +262,8 @@
 
                                     <!-- INTERACTIVE GRID -->
                                     <div class="table-responsive">
-                                        <table class="table table-bordered table-striped table-hover grid-table text-center">
+                                        <table
+                                            class="table table-bordered table-striped table-hover grid-table text-center">
                                             <thead>
                                                 <tr>
                                                     <th>No.</th>
@@ -289,7 +293,8 @@
                                                         <td>
                                                             @if ($item->is_collected)
                                                                 <span class="badge bg-success" style="font-size: 11px;">
-                                                                    ₱{{ number_format($item->collection, 2) }} ({{ $item->type }})
+                                                                    ₱{{ number_format($item->collection, 2) }}
+                                                                    ({{ $item->type }})
                                                                 </span>
                                                             @else
                                                                 -
@@ -318,7 +323,8 @@
                                                             <div class="btn-action-group">
                                                                 <!-- Payment Actions -->
                                                                 @if ($item->is_collected)
-                                                                    <button type="button" class="btn btn-xs btn-warning edit-collection-btn"
+                                                                    <button type="button"
+                                                                        class="btn btn-xs btn-warning edit-collection-btn"
                                                                         data-payment-id="{{ $item->payment_id }}"
                                                                         data-loan-id="{{ $loan->id }}"
                                                                         data-client-name="{{ $client->fullname }}"
@@ -330,7 +336,8 @@
                                                                         title="Edit Collection">
                                                                         <i class="fas fa-edit"></i> Edit Pay
                                                                     </button>
-                                                                    <button type="button" class="btn btn-xs btn-danger reverse-collection-btn"
+                                                                    <button type="button"
+                                                                        class="btn btn-xs btn-danger reverse-collection-btn"
                                                                         data-payment-id="{{ $item->payment_id }}"
                                                                         data-loan-id="{{ $loan->id }}"
                                                                         data-client-name="{{ $client->fullname }}"
@@ -340,12 +347,12 @@
                                                                         <i class="fas fa-undo"></i> Rev Pay
                                                                     </button>
                                                                 @else
-                                                                    <button type="button" class="btn btn-xs btn-success edit-collection-btn"
+                                                                    <button type="button"
+                                                                        class="btn btn-xs btn-success edit-collection-btn"
                                                                         data-payment-id=""
                                                                         data-loan-id="{{ $loan->id }}"
                                                                         data-client-name="{{ $client->fullname }}"
-                                                                        data-collection=""
-                                                                        data-type="CASH"
+                                                                        data-collection="" data-type="CASH"
                                                                         data-is-collected="0"
                                                                         data-due-date="{{ $item->date }}"
                                                                         data-reference-number="{{ $item->reference_number }}"
@@ -356,7 +363,8 @@
 
                                                                 <!-- Savings Actions -->
                                                                 @if (is_numeric($item->savings_amount) && $item->savings_amount > 0)
-                                                                    <button type="button" class="btn btn-xs btn-info edit-savings-btn"
+                                                                    <button type="button"
+                                                                        class="btn btn-xs btn-info edit-savings-btn"
                                                                         data-payment-id="{{ $item->payment_id }}"
                                                                         data-loan-id="{{ $loan->id }}"
                                                                         data-client-name="{{ $client->fullname }}"
@@ -366,7 +374,8 @@
                                                                         title="Edit Savings">
                                                                         <i class="fas fa-wallet"></i> Edit Sav
                                                                     </button>
-                                                                    <button type="button" class="btn btn-xs btn-danger reverse-savings-btn"
+                                                                    <button type="button"
+                                                                        class="btn btn-xs btn-danger reverse-savings-btn"
                                                                         data-payment-id="{{ $item->payment_id }}"
                                                                         data-loan-id="{{ $loan->id }}"
                                                                         data-client-name="{{ $client->fullname }}"
@@ -376,7 +385,8 @@
                                                                         <i class="fas fa-undo"></i> Rev Sav
                                                                     </button>
                                                                 @else
-                                                                    <button type="button" class="btn btn-xs btn-outline-info edit-savings-btn"
+                                                                    <button type="button"
+                                                                        class="btn btn-xs btn-outline-info edit-savings-btn"
                                                                         data-payment-id="{{ $item->payment_id }}"
                                                                         data-loan-id="{{ $loan->id }}"
                                                                         data-client-name="{{ $client->fullname }}"
@@ -493,7 +503,7 @@
                 currentLoanId = $(this).data('loan-id');
                 currentDueDate = $(this).data('due-date');
                 currentReferenceNumber = $(this).data('reference-number');
-                
+
                 var clientName = $(this).data('client-name');
                 var collection = $(this).data('collection');
                 var type = $(this).data('type') || 'CASH';
@@ -536,7 +546,7 @@
                 });
 
                 $.ajax({
-                    url: '{{ route('collections.payment.save') }}',
+                    url: '{{ route('secretary.collections.payment.save') }}',
                     method: 'POST',
                     data: {
                         _token: $('meta[name="csrf-token"]').attr('content'),
@@ -591,7 +601,7 @@
                         });
 
                         $.ajax({
-                            url: '{{ route('collections.payment.reverse') }}',
+                            url: '{{ route('secretary.collections.payment.reverse') }}',
                             method: 'POST',
                             data: {
                                 _token: $('meta[name="csrf-token"]').attr('content'),
@@ -602,12 +612,14 @@
                                 client_area: '{{ $client->area_id }}'
                             },
                             success: function(response) {
-                                Swal.fire('Success!', response.message, 'success').then(function() {
-                                    location.reload();
-                                });
+                                Swal.fire('Success!', response.message, 'success').then(
+                                    function() {
+                                        location.reload();
+                                    });
                             },
                             error: function(xhr) {
-                                var msg = 'Something went wrong while reversing the collection.';
+                                var msg =
+                                    'Something went wrong while reversing the collection.';
                                 if (xhr.responseJSON && xhr.responseJSON.message) {
                                     msg = xhr.responseJSON.message;
                                 }
@@ -629,7 +641,7 @@
                 currentSavingsLoanId = $(this).data('loan-id');
                 currentSavingsDueDate = $(this).data('due-date');
                 currentSavingsReferenceNumber = $(this).data('reference-number');
-                
+
                 var clientName = $(this).data('client-name');
                 var savings = $(this).data('savings') || 0;
 
@@ -666,7 +678,7 @@
                 });
 
                 $.ajax({
-                    url: '{{ route('collections.savings.save') }}',
+                    url: '{{ route('secretary.collections.savings.save') }}',
                     method: 'POST',
                     data: {
                         _token: $('meta[name="csrf-token"]').attr('content'),
@@ -720,7 +732,7 @@
                         });
 
                         $.ajax({
-                            url: '{{ route('collections.savings.reverse') }}',
+                            url: '{{ route('secretary.collections.savings.reverse') }}',
                             method: 'POST',
                             data: {
                                 _token: $('meta[name="csrf-token"]').attr('content'),
@@ -731,12 +743,14 @@
                                 client_area: '{{ $client->area_id }}'
                             },
                             success: function(response) {
-                                Swal.fire('Success!', response.message, 'success').then(function() {
-                                    location.reload();
-                                });
+                                Swal.fire('Success!', response.message, 'success').then(
+                                    function() {
+                                        location.reload();
+                                    });
                             },
                             error: function(xhr) {
-                                var msg = 'Something went wrong while reversing the savings.';
+                                var msg =
+                                    'Something went wrong while reversing the savings.';
                                 if (xhr.responseJSON && xhr.responseJSON.message) {
                                     msg = xhr.responseJSON.message;
                                 }
