@@ -111,6 +111,7 @@
                             <br>
                             GCash: <strong>{{ $payment->gcash_count }}</strong> |
                             Cheque: <strong>{{ $payment->cheque_count }}</strong> |
+                            Bank Transfer: <strong>{{ $payment->bank_transfer_count ?? 0 }}</strong> |
                             No Payment: <strong>{{ $payment->no_payment_count }}</strong>
                         </td>
                     </tr>

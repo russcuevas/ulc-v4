@@ -688,6 +688,11 @@ class SecretaryCollectionController extends Controller
                 ->where('type', 'cheque')
                 ->count();
 
+            $ref->bank_transfer_count = DB::table('clients_payments')
+                ->where('reference_number', $ref->reference_number)
+                ->whereIn('type', ['bank transfer', 'BANK TRANSFER', 'Bank Transfer'])
+                ->count();
+
             $ref->no_payment_count = DB::table('clients_payments')
                 ->where('reference_number', $ref->reference_number)
                 ->where('is_collected', 0)

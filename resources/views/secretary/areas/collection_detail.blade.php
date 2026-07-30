@@ -783,6 +783,7 @@
                             <option value="CASH">CASH</option>
                             <option value="GCASH">GCASH</option>
                             <option value="CHEQUE">CHEQUE</option>
+                            <option value="BANK TRANSFER">BANK TRANSFER</option>
                             <option value="ADVANCE">ADVANCE</option>
                         </select>
                     </div>
