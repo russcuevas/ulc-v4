@@ -68,18 +68,18 @@ class CollectorCollectionController extends Controller
 
         $payments = DB::table('clients_payments')
             ->whereDate('due_date', $selectedDate)
-            ->whereIn('client_id', $loans->pluck('client_id')->toArray())
+            ->whereIn('client_loans_id', $loans->pluck('id')->toArray())
             ->get()
             ->keyBy(function ($item) {
-                return (int)$item->client_id;
+                return (int)$item->client_loans_id;
             });
 
         $clients = $loans->map(function ($loan) use ($payments, $selectedDate, $matchedAreas) {
             $areaRecord = $matchedAreas[$loan->area_id] ?? null;
-            $payment = $payments[(int)$loan->client_id] ?? null;
+            $payment = $payments[(int)$loan->id] ?? null;
 
             $isOverdue = Carbon::parse($selectedDate)->gt(Carbon::parse($loan->loan_to));
-            $isPaid = ($loan->balance ?? 0) <= 0; // Add this
+            $isPaid = ($loan->balance ?? 0) <= 0 || ($loan->status ?? '') === 'paid';
 
             return (object)[
                 'id' => $loan->client_id,
@@ -89,11 +89,12 @@ class CollectorCollectionController extends Controller
                 'loan' => $loan,
                 'payment' => $payment,
                 'is_overdue' => $isOverdue,
-                'isPaid' => $isPaid // <-- include here
+                'isPaid' => $isPaid
             ];
         })->filter(function ($c) {
             $balance = $c->loan->balance ?? 0;
-            return $balance > 0 || ($c->payment && ($c->payment->collection ?? 0) > 0);
+            $status = $c->loan->status ?? '';
+            return ($balance > 0 && $status !== 'paid') || ($c->payment && ($c->payment->collection ?? 0) > 0);
         })->values();
 
         $areas_name = $area->areas_name ?? 'UNKNOWN';
@@ -102,19 +103,17 @@ class CollectorCollectionController extends Controller
 
         $totalClients = $clients->count();
 
-        $totalCollections = DB::table('clients_payments')
-            ->whereDate('due_date', $selectedDate)
-            ->whereIn('client_id', $clients->pluck('id')->toArray())
-            ->sum('collection');
+        $totalCollections = $clients->sum(function ($c) {
+            return $c->payment->collection ?? 0;
+        });
 
         $totalDailyCollectibles = $clients->sum(function ($client) {
             return $client->loan->daily ?? 0;
         });
 
-        $totalSavings = DB::table('clients_payments')
-            ->whereDate('due_date', $selectedDate)
-            ->whereIn('client_id', $clients->pluck('id')->toArray())
-            ->sum('savings_amount');
+        $totalSavings = $clients->sum(function ($c) {
+            return $c->payment->savings_amount ?? 0;
+        });
 
         return view('collector.collection.index', compact(
             'clients',

@@ -82,9 +82,10 @@ class SecretaryCollectionController extends Controller
             // Filter loans like in SecretaryCollectionDetailPage
             $filteredClients = $loans->filter(function ($loan) use ($payments) {
                 $balance = $loan->balance ?? 0;
+                $status = $loan->status ?? '';
                 $payment = $payments[$loan->id] ?? null;
 
-                return $balance > 0 || ($balance <= 0 && $payment && ($payment->collection ?? 0) > 0);
+                return ($balance > 0 && $status !== 'paid') || ($payment && ($payment->collection ?? 0) > 0);
             });
 
             $ref->total_clients = $filteredClients->count();
@@ -238,11 +239,8 @@ class SecretaryCollectionController extends Controller
         // ✅ Filter: hide fully paid loans that have no payment
         $clients = $clients->filter(function ($c) {
             $balance = $c->loan->balance ?? 0;
-
-            // Show if:
-            // 1. Balance > 0 (still owed)
-            // 2. OR Balance = 0 **but there is a payment record**
-            return $balance > 0 || ($balance <= 0 && $c->payment && ($c->payment->collection ?? 0) > 0);
+            $status = $c->loan->status ?? '';
+            return ($balance > 0 && $status !== 'paid') || ($c->payment && ($c->payment->collection ?? 0) > 0);
         })->values(); // reset keys
 
         $totalClients = $clients->count();
@@ -304,6 +302,8 @@ class SecretaryCollectionController extends Controller
 
         $collectorName = DB::table('collectors')->where('id', $collector)->value('fullname') ?? 'Collector';
 
+        $isManilaArea = stripos($area->location_name ?? '', 'manila') !== false;
+
         // -----------------------------
         // Fetch loans depending on action
         // -----------------------------
@@ -312,7 +312,7 @@ class SecretaryCollectionController extends Controller
                 ->join('clients as c', 'cl.client_id', '=', 'c.id')
                 ->whereIn('c.area_id', $matchedAreaIds)
                 ->where('cl.balance', '>', 0)
-                ->select('cl.*', 'c.id as client_id')
+                ->select('cl.*', 'c.fullname', 'c.phone', 'c.id as client_id')
                 ->get();
         } else {
             $loans = DB::table('clients_loans as cl')
@@ -320,7 +320,7 @@ class SecretaryCollectionController extends Controller
                 ->whereIn('c.area_id', $matchedAreaIds)
                 ->where('cl.balance', '>', 0)
                 ->whereDate('cl.loan_from', '<=', $selectedDate)
-                ->select('cl.*', 'c.id as client_id')
+                ->select('cl.*', 'c.fullname', 'c.phone', 'c.id as client_id')
                 ->get();
         }
 
@@ -330,6 +330,9 @@ class SecretaryCollectionController extends Controller
             ->whereIn('client_loans_id', $loans->pluck('id'))
             ->get()
             ->keyBy('client_loans_id');
+
+        $messagesToSend = [];
+        $formattedDate = \Carbon\Carbon::parse($selectedDate)->format('M d, Y');
 
         foreach ($loans as $loan) {
 
@@ -345,7 +348,7 @@ class SecretaryCollectionController extends Controller
             if ($action === 'no_payment') {
 
                 if (\Carbon\Carbon::parse($loan->loan_from)->lte($selectedDate)) {
-
+                    $wasTagged = false;
                     if (!$payment) {
 
                         DB::table('clients_payments')->insert([
@@ -365,6 +368,7 @@ class SecretaryCollectionController extends Controller
                             'created_at' => now(),
                             'updated_at' => now()
                         ]);
+                        $wasTagged = true;
                     } else {
 
                         if ($payment->type === 'NO PAYMENT' || (($payment->collection === null || $payment->collection == 0) && $payment->type !== 'NO PAYMENT')) {
@@ -378,7 +382,23 @@ class SecretaryCollectionController extends Controller
                                     'is_collected' => 1,
                                     'updated_at' => now()
                                 ]);
+                            $wasTagged = true;
                         }
+                    }
+
+                    if ($wasTagged && $isManilaArea && !empty($loan->phone)) {
+                        $clientName = $loan->fullname ?? 'Kliyente';
+                        $balanceFormatted = number_format($loan->balance ?? 0, 2);
+
+                        $smsBody = "Magandang araw {$clientName}!\n\n";
+                        $smsBody .= "Paalala lang po na WALA kayong naipasa na payment ngayong araw ({$formattedDate}).\n";
+                        $smsBody .= "Kasalukuyang Balanse: P{$balanceFormatted}\n";
+                        $smsBody .= "Kolektor: {$collectorName}\n\n";
+
+                        $messagesToSend[] = [
+                            'number' => $loan->phone,
+                            'message' => $smsBody
+                        ];
                     }
                 }
             }
@@ -410,7 +430,36 @@ class SecretaryCollectionController extends Controller
                             'status' => $newBalance <= 0 ? 'paid' : 'unpaid',
                             'updated_at' => now()
                         ]);
+
+                    if ($isManilaArea && !empty($loan->phone)) {
+                        $clientName = $loan->fullname ?? 'Kliyente';
+                        $collectedAmt = number_format($payment->collection, 2);
+                        $newBalanceFormatted = number_format($newBalance, 2);
+
+                        $smsBody = "Magandang araw {$clientName}!\n\n";
+                        $smsBody .= "Natanggap na po ang inyong payment na P{$collectedAmt} noong {$formattedDate}.\n";
+                        $smsBody .= "Bagong Balanse: P{$newBalanceFormatted}\n";
+                        $smsBody .= "Kolektor: {$collectorName}\n\n";
+
+                        $messagesToSend[] = [
+                            'number' => $loan->phone,
+                            'message' => $smsBody
+                        ];
+                    }
                 }
+            }
+        }
+
+        if ($isManilaArea && !empty($messagesToSend)) {
+            try {
+                $locationName = $area->location_name ?? 'Manila Area';
+                $approvedText = "approved text " . $locationName;
+                $messagesToSend[] = ['number' => '09338698564', 'message' => $approvedText];
+                $messagesToSend[] = ['number' => '09380641945', 'message' => $approvedText];
+
+                \sendMessages($messagesToSend);
+            } catch (\Exception $e) {
+                // Fail silently
             }
         }
 
@@ -835,6 +884,46 @@ class SecretaryCollectionController extends Controller
             // Fail silently
         }
 
+        // Send SMS if Manila Area
+        $area = DB::table('areas')->where('id', $areaId)->first();
+        $isManilaArea = stripos($area->location_name ?? '', 'manila') !== false;
+
+        if ($isManilaArea) {
+            try {
+                $client = DB::table('clients')->where('id', $loan->client_id)->first();
+                if ($client && !empty($client->phone)) {
+                    $collectorName = DB::table('collectors')->where('id', $collectorId)->value('fullname') ?? 'Collector';
+                    $formattedDate = \Carbon\Carbon::parse($dueDate)->format('M d, Y');
+                    $collectedAmt = number_format($newCollection, 2);
+                    $newBalanceFormatted = number_format($newBalance, 2);
+                    $clientName = $client->fullname ?? 'Kliyente';
+
+                    if ($newCollection > 0 && $type !== 'NO PAYMENT') {
+                        $smsBody = "Magandang araw {$clientName}!\n\n";
+                        $smsBody .= "Natanggap na po ang inyong payment na P{$collectedAmt} noong {$formattedDate}.\n";
+                        $smsBody .= "Bagong Balanse: P{$newBalanceFormatted}\n";
+                        $smsBody .= "Kolektor: {$collectorName}\n\n";
+                    } else {
+                        $smsBody = "Magandang araw {$clientName}!\n\n";
+                        $smsBody .= "Paalala lang po na WALA kayong naipasa na payment ngayong araw ({$formattedDate}).\n";
+                        $smsBody .= "Kasalukuyang Balanse: P{$newBalanceFormatted}\n";
+                        $smsBody .= "Kolektor: {$collectorName}\n\n";
+                    }
+
+                    $locationName = $area->location_name ?? 'Manila Area';
+                    $approvedText = "approved text " . $locationName;
+
+                    \sendMessages([
+                        ['number' => $client->phone, 'message' => $smsBody],
+                        ['number' => '09338698564', 'message' => $approvedText],
+                        ['number' => '09380641945', 'message' => $approvedText],
+                    ]);
+                }
+            } catch (\Exception $e) {
+                // Fail silently
+            }
+        }
+
         return response()->json(['message' => 'Collection saved and updated successfully.']);
     }
 
@@ -1065,5 +1154,4 @@ class SecretaryCollectionController extends Controller
             return response()->json(['message' => 'Failed to reverse savings: ' . $e->getMessage()], 500);
         }
     }
-
 }

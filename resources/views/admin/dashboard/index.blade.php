@@ -494,7 +494,10 @@
                 <div class="modal-body">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <span class="text-muted font-italic" id="paymentDetailsRangeInfo"></span>
-                        <span class="badge badge-info" id="paymentDetailsCountBadge" style="background-color: #FF5F00; font-size: 14px; padding: 6px 12px;">0 Payments</span>
+                        <div class="d-flex align-items-center" style="gap: 8px;">
+                            <span class="badge badge-success" style="background-color: #28a745; font-size: 14px; padding: 6px 12px;">Total Collection: <span id="paymentDetailsTotalAmount">P0.00</span></span>
+                            <span class="badge badge-info" id="paymentDetailsCountBadge" style="background-color: #FF5F00; font-size: 14px; padding: 6px 12px;">0 Payments</span>
+                        </div>
                     </div>
                     <div id="paymentsLoader" class="text-center my-5">
                         <div class="spinner-border text-primary" role="status" style="color: #FF5F00 !important;">
@@ -520,12 +523,6 @@
                             <tbody id="paymentsDetailBody">
                                 <!-- Dynamic rows -->
                             </tbody>
-                            <tfoot>
-                                <tr class="font-weight-bold" style="background-color: #f8f9fa;">
-                                    <td colspan="3" class="text-right">TOTAL COLLECTION:</td>
-                                    <td id="paymentDetailsTotalAmount" colspan="3" class="text-success" style="font-size: 16px;">P0.00</td>
-                                </tr>
-                            </tfoot>
                         </table>
                     </div>
                 </div>

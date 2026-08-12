@@ -97,9 +97,10 @@ class ManagementAreaController extends Controller
 
             $filteredClients = $loans->filter(function ($loan) use ($payments) {
                 $balance = $loan->balance ?? 0;
+                $status = $loan->status ?? '';
                 $payment = $payments[$loan->id] ?? null;
 
-                return $balance > 0 || ($balance <= 0 && $payment && ($payment->collection ?? 0) > 0);
+                return ($balance > 0 && $status !== 'paid') || ($payment && ($payment->collection ?? 0) > 0);
             });
 
             $ref->total_clients = $filteredClients->count();
@@ -229,7 +230,8 @@ class ManagementAreaController extends Controller
 
         $clients = $clients->filter(function ($c) {
             $balance = $c->loan->balance ?? 0;
-            return $balance > 0 || ($balance <= 0 && $c->payment && ($c->payment->collection ?? 0) > 0);
+            $status = $c->loan->status ?? '';
+            return ($balance > 0 && $status !== 'paid') || ($c->payment && ($c->payment->collection ?? 0) > 0);
         })->values();
 
         $totalClients = $clients->count();

@@ -48,6 +48,8 @@ if (!function_exists('_executeSmsCurl')) {
         curl_setopt($ch, CURLOPT_POST, 1);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
         $response = curl_exec($ch);
 
         if (curl_errno($ch)) {
@@ -79,62 +81,69 @@ if (!function_exists('_executeSmsCurl')) {
 if (!function_exists('sendMessages')) {
     function sendMessages(array $messages, int $option = USE_SPECIFIED, $devices = [], ?int $schedule = null, bool $useRandomDevice = false)
     {
-        $apiKey = API_KEY;
-        $serverUrl = SERVER;
+        try {
+            $apiKey = API_KEY;
+            $serverUrl = SERVER;
 
-        // Automatically format each phone number in the batch to +63...
-        foreach ($messages as &$msg) {
-            if (isset($msg['number'])) {
-                $msg['number'] = formatPhoneNumber($msg['number']);
+            // Automatically format each phone number in the batch to +63...
+            foreach ($messages as &$msg) {
+                if (isset($msg['number'])) {
+                    $msg['number'] = formatPhoneNumber($msg['number']);
+                }
             }
+            unset($msg);
+
+            // Kung iisa lang ang mensahe o may manual schedule nang kasama, gamitin ang dating bulk method
+            if (count($messages) <= 1) {
+                $postData = [
+                    'key' => $apiKey,
+                    'messages' => json_encode($messages),
+                    'option' => $option,
+                    'devices' => json_encode(is_array($devices) ? $devices : [$devices]),
+                    'useRandomDevice' => $useRandomDevice ? 1 : 0
+                ];
+
+                if ($schedule !== null) {
+                    $postData['schedule'] = $schedule;
+                }
+
+                return _executeSmsCurl(rtrim($serverUrl, '/') . '/services/send.php', $postData);
+            }
+
+            // Kung marami ang mensahe, i-schedule natin ang bawat isa ng may delay
+            // para hindi sila magsabay-sabay at hindi ma-block ng network operator.
+            $delayIncrement = 0; // Segundo na delay sa pagitan ng bawat SMS (maaari mong palitan ito kung nais mo)
+            $baseSchedule = $schedule ?? time();
+            $lastResult = null;
+
+            foreach ($messages as $index => $msg) {
+                $postData = [
+                    'key' => $apiKey,
+                    'messages' => json_encode([$msg]),
+                    'option' => $option,
+                    'devices' => json_encode(is_array($devices) ? $devices : [$devices]),
+                    'useRandomDevice' => $useRandomDevice ? 1 : 0
+                ];
+
+                // Ang unang mensahe ay ipapadala agad, ang susunod ay may karagdagang delay kung may delayIncrement
+                if ($schedule !== null || ($index > 0 && $delayIncrement > 0)) {
+                    $postData['schedule'] = $baseSchedule + ($index * $delayIncrement);
+                }
+
+                try {
+                    $lastResult = _executeSmsCurl(rtrim($serverUrl, '/') . '/services/send.php', $postData);
+                } catch (\Throwable $e) {
+                    // Fail silently / ipagpatuloy ang pag-send sa iba kahit may sumablay na isa
+                    \Illuminate\Support\Facades\Log::warning('SMS Provider error ignored for single item: ' . $e->getMessage());
+                }
+            }
+
+            return $lastResult;
+        } catch (\Throwable $e) {
+            // Automatic fallback: Huwag pansinin ang anumang error galing sa SMS provider (hal. walang subscription/load)
+            \Illuminate\Support\Facades\Log::warning('SMS Provider error ignored automatically: ' . $e->getMessage());
+            return null;
         }
-        unset($msg);
-
-        // Kung iisa lang ang mensahe o may manual schedule nang kasama, gamitin ang dating bulk method
-        if (count($messages) <= 1) {
-            $postData = [
-                'key' => $apiKey,
-                'messages' => json_encode($messages),
-                'option' => $option,
-                'devices' => json_encode(is_array($devices) ? $devices : [$devices]),
-                'useRandomDevice' => $useRandomDevice ? 1 : 0
-            ];
-
-            if ($schedule !== null) {
-                $postData['schedule'] = $schedule;
-            }
-
-            return _executeSmsCurl(rtrim($serverUrl, '/') . '/services/send.php', $postData);
-        }
-
-        // Kung marami ang mensahe, i-schedule natin ang bawat isa ng may delay
-        // para hindi sila magsabay-sabay at hindi ma-block ng network operator.
-        $delayIncrement = 0; // Segundo na delay sa pagitan ng bawat SMS (maaari mong palitan ito kung nais mo)
-        $baseSchedule = $schedule ?? time();
-        $lastResult = null;
-
-        foreach ($messages as $index => $msg) {
-            $postData = [
-                'key' => $apiKey,
-                'messages' => json_encode([$msg]),
-                'option' => $option,
-                'devices' => json_encode(is_array($devices) ? $devices : [$devices]),
-                'useRandomDevice' => $useRandomDevice ? 1 : 0
-            ];
-
-            // Ang unang mensahe ay ipapadala agad, ang susunod ay may karagdagang delay kung may delayIncrement
-            if ($schedule !== null || ($index > 0 && $delayIncrement > 0)) {
-                $postData['schedule'] = $baseSchedule + ($index * $delayIncrement);
-            }
-
-            try {
-                $lastResult = _executeSmsCurl(rtrim($serverUrl, '/') . '/services/send.php', $postData);
-            } catch (\Exception $e) {
-                // Fail silently / ipagpatuloy ang pag-send sa iba kahit may sumablay na isa
-            }
-        }
-
-        return $lastResult;
     }
 }
 
