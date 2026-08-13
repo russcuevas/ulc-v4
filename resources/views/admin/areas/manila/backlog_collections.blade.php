@@ -253,7 +253,7 @@
                                                     <td>{{ \Carbon\Carbon::parse($loan->loan_to)->format('M d, Y') }}
                                                     </td>
                                                     <td>{{ $loan->loan_terms ?? 'N/A' }}</td>
-                                                    <td>₱{{ number_format(collect($paymentsGrid)->sum('savings_amount'), 2) }}
+                                                    <td>₱{{ number_format($loan->savings_balance ?? 0, 2) }}
                                                     </td>
                                                 </tr>
                                             </tbody>

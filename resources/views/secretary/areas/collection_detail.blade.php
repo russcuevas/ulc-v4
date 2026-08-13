@@ -180,8 +180,13 @@
                                                     data-action="no_payment">
                                                     <i class="fas fa-times-circle me-1"></i> No Payment
                                                 </button>
-                                            </div>
 
+                                                <button type="submit"
+                                                    class="btn btn-warning mb-2 mb-sm-0 mr-sm-2 text-white"
+                                                    data-action="reverse_all">
+                                                    <i class="fas fa-undo me-1"></i> Reverse Collection
+                                                </button>
+                                            </div>
                                         </div>
                                     </form>
                                 </div>
@@ -250,8 +255,8 @@
                                         <div class="card border-0 shadow-sm h-100">
                                             <div class="card-body">
                                                 <div class="d-flex align-items-center">
-                                                    <div
-                                                        class="flex-shrink-0 p-3 rounded-circle" style="background-color: rgba(13, 110, 253, 0.1); color: #0d6efd;">
+                                                    <div class="flex-shrink-0 p-3 rounded-circle"
+                                                        style="background-color: rgba(13, 110, 253, 0.1); color: #0d6efd;">
                                                         <i class="fas fa-piggy-bank fa-lg"></i>
                                                     </div>
                                                     <div class="flex-grow-1 ms-3">
@@ -342,10 +347,12 @@
                                             <td>₱{{ number_format($client->overdueVal ?? 0, 2) }}</td>
 
                                             {{-- Old Balance --}}
-                                            <td class="old-balance-cell">₱{{ number_format($client->oldBalanceDisplay ?? 0, 2) }}</td>
+                                            <td class="old-balance-cell">
+                                                ₱{{ number_format($client->oldBalanceDisplay ?? 0, 2) }}</td>
 
                                             {{-- Outstanding Balance --}}
-                                            <td class="outstanding-balance-cell">₱{{ number_format($client->outstandingBalanceDisplay ?? 0, 2) }}</td>
+                                            <td class="outstanding-balance-cell">
+                                                ₱{{ number_format($client->outstandingBalanceDisplay ?? 0, 2) }}</td>
 
                                             {{-- Daily --}}
                                             <td class="daily-cell">
@@ -373,10 +380,10 @@
                                                         @else
                                                             <button type="button"
                                                                 class="btn btn-sm btn-success edit-savings-btn"
-                                                                data-payment-id="" data-loan-id="{{ $client->loan->id }}"
+                                                                data-payment-id=""
+                                                                data-loan-id="{{ $client->loan->id }}"
                                                                 data-client-name="{{ $client->fullname }}"
-                                                                data-savings=""
-                                                                title="Add Savings">
+                                                                data-savings="" title="Add Savings">
                                                                 <i class="fas fa-plus"></i>
                                                             </button>
                                                         @endif
@@ -533,20 +540,26 @@
             $('#collectionForm').submit(function(e) {
                 let action = $('#actionInput').val();
 
-                // Handle collect, no_payment and reminder via AJAX to avoid full-page JSON responses
-                if (action === 'collect' || action === 'no_payment') {
+                if (action === 'collect' || action === 'no_payment' || action === 'reverse_all') {
                     e.preventDefault();
 
                     let title = 'Are you sure?';
                     let text = '';
                     let confirmText = '';
+                    let confirmColor = '#28a745';
 
                     if (action === 'collect') {
                         text = 'This will mark all clients with a collection as collected!';
                         confirmText = 'Yes, collect now!';
+                        confirmColor = '#28a745';
                     } else if (action === 'no_payment') {
                         text = 'This will tag all clients without payment as NO PAYMENT!';
                         confirmText = 'Yes, mark as NO PAYMENT!';
+                        confirmColor = '#dc3545';
+                    } else if (action === 'reverse_all') {
+                        text = 'This will reverse all Collection and Savings for this reference number!';
+                        confirmText = 'Yes, reverse all!';
+                        confirmColor = '#ffc107';
                     }
 
                     Swal.fire({
@@ -554,7 +567,7 @@
                         text: text,
                         icon: 'warning',
                         showCancelButton: true,
-                        confirmButtonColor: '#28a745',
+                        confirmButtonColor: confirmColor,
                         cancelButtonColor: '#d33',
                         confirmButtonText: confirmText
                     }).then((result) => {
@@ -573,11 +586,12 @@
 
                             $.ajax({
                                 url: $(this).attr('action'),
-                                method: "POST",
+                                method: 'POST',
                                 data: $(this).serialize(),
                                 success: function(response) {
                                     let successTitle = action === 'collect' ?
-                                        'Collected!' : 'Tagged!';
+                                        'Collected!' : (action === 'no_payment' ?
+                                            'Tagged!' : 'Reversed!');
                                     Swal.fire({
                                         title: successTitle,
                                         text: response.message,
@@ -631,7 +645,8 @@
                         if ($(this).css('display') !== 'none' || $(this).hasClass(
                                 'lazy-hidden')) {
                             oldBalanceTotal += intVal($(this).find('.old-balance-cell').html());
-                            balanceTotal += intVal($(this).find('.outstanding-balance-cell').html());
+                            balanceTotal += intVal($(this).find('.outstanding-balance-cell')
+                                .html());
                             dailyTotal += intVal($(this).find('.daily-cell').html());
                             collectionTotal += intVal($(this).find('.collection-cell').html());
                             savingsTotal += intVal($(this).find('.savings-cell').html());

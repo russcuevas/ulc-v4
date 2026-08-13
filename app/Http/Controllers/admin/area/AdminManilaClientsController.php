@@ -232,6 +232,7 @@ class AdminManilaClientsController extends Controller
                 'release_number',
                 'loan_amount',
                 'balance',
+                'savings_balance',
                 'daily',
                 'loan_from',
                 'loan_to',
@@ -258,7 +259,13 @@ class AdminManilaClientsController extends Controller
         // Get payments
         $payments = DB::table('clients_payments')
             ->where('client_loans_id', $loanId)
-            ->where('is_collected', 1)
+            ->where(function ($query) {
+                $query->where('is_collected', 1)
+                    ->orWhere(function ($q) {
+                        $q->where('savings_amount', '>', 0)
+                            ->whereNotNull('savings_amount');
+                    });
+            })
             ->orderBy('due_date', 'asc')
             ->get();
 
@@ -344,6 +351,7 @@ class AdminManilaClientsController extends Controller
                 'release_number',
                 'loan_amount',
                 'balance',
+                'savings_balance',
                 'daily',
                 'loan_from',
                 'loan_to',

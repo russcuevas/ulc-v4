@@ -290,6 +290,62 @@ class SecretaryCollectionController extends Controller
         $selectedDate = $reference->due_date;
         $areaId = $reference->client_area;
 
+        if ($action === 'reverse_all') {
+            DB::beginTransaction();
+            try {
+                $payments = DB::table('clients_payments')
+                    ->where('reference_number', $refNo)
+                    ->get();
+
+                foreach ($payments as $payment) {
+                    $loan = DB::table('clients_loans')->where('id', $payment->client_loans_id)->first();
+                    if ($loan) {
+                        $loanUpdates = [];
+
+                        if ($payment->is_collected == 1 && !empty($payment->collection) && (float) $payment->collection > 0) {
+                            $oldCollected = (float) $payment->collection;
+                            $newBalance = (float) $loan->balance + $oldCollected;
+                            $loanUpdates['balance'] = $newBalance;
+                            $loanUpdates['status'] = $newBalance <= 0 ? 'paid' : 'unpaid';
+                        }
+
+                        if (!empty($payment->savings_amount) && (float) $payment->savings_amount > 0) {
+                            $oldSavings = (float) $payment->savings_amount;
+                            $currentSavings = isset($loanUpdates['savings_balance'])
+                                ? $loanUpdates['savings_balance']
+                                : (float) ($loan->savings_balance ?? 0);
+                            $newSavingsBalance = max(0, $currentSavings - $oldSavings);
+                            $loanUpdates['savings_balance'] = $newSavingsBalance;
+                        }
+
+                        if (!empty($loanUpdates)) {
+                            $loanUpdates['updated_at'] = now();
+                            DB::table('clients_loans')
+                                ->where('id', $loan->id)
+                                ->update($loanUpdates);
+                        }
+                    }
+
+                    DB::table('clients_payments')
+                        ->where('id', $payment->id)
+                        ->update([
+                            'collection' => null,
+                            'type' => null,
+                            'savings_amount' => 0.00,
+                            'is_lapsed' => 0,
+                            'is_collected' => 0,
+                            'updated_at' => now(),
+                        ]);
+                }
+
+                DB::commit();
+                return response()->json(['message' => 'All collections and savings for this reference have been reversed successfully.']);
+            } catch (\Exception $e) {
+                DB::rollBack();
+                return response()->json(['message' => 'Failed to reverse collections and savings: ' . $e->getMessage()], 500);
+            }
+        }
+
         $area = DB::table('areas')->where('id', $areaId)->first();
         $matchedAreaIds = DB::table('areas')
             ->where('location_name', $area->location_name ?? '')
@@ -1069,7 +1125,7 @@ class SecretaryCollectionController extends Controller
                     'type' => null,
                     'savings_amount' => $newSavings,
                     'is_lapsed' => $isLapsed,
-                    'is_collected' => 0,
+                    'is_collected' => 1,
                     'due_date' => $dueDate,
                     'daily' => $loan->daily ?? 0,
                     'old_balance' => $loan->balance ?? 0,

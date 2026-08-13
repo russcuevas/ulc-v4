@@ -180,7 +180,10 @@
                                                     <i class="fas fa-times-circle me-1"></i> No Payment
                                                 </button>
 
-
+                                                <button type="submit" class="btn btn-warning mb-2 mb-sm-0 mr-sm-2 text-white"
+                                                    data-action="reverse_all">
+                                                    <i class="fas fa-undo me-1"></i> Reverse Collection
+                                                </button>
                                             </div>
 
                                         </div>
@@ -535,19 +538,26 @@
             $('#collectionForm').submit(function(e) {
                 let action = $('#actionInput').val();
 
-                if (action === 'collect' || action === 'no_payment') {
+                if (action === 'collect' || action === 'no_payment' || action === 'reverse_all') {
                     e.preventDefault();
 
                     let title = 'Are you sure?';
                     let text = '';
                     let confirmText = '';
+                    let confirmColor = '#28a745';
 
                     if (action === 'collect') {
                         text = 'This will mark all clients with a collection as collected!';
                         confirmText = 'Yes, collect now!';
+                        confirmColor = '#28a745';
                     } else if (action === 'no_payment') {
                         text = 'This will tag all clients without payment as NO PAYMENT!';
                         confirmText = 'Yes, mark as NO PAYMENT!';
+                        confirmColor = '#dc3545';
+                    } else if (action === 'reverse_all') {
+                        text = 'This will reverse all Collection and Savings for this reference number!';
+                        confirmText = 'Yes, reverse all!';
+                        confirmColor = '#ffc107';
                     }
 
                     Swal.fire({
@@ -555,7 +565,7 @@
                         text: text,
                         icon: 'warning',
                         showCancelButton: true,
-                        confirmButtonColor: '#28a745',
+                        confirmButtonColor: confirmColor,
                         cancelButtonColor: '#d33',
                         confirmButtonText: confirmText
                     }).then((result) => {
@@ -578,7 +588,7 @@
                                 data: $(this).serialize(),
                                 success: function(response) {
                                     let successTitle = action === 'collect' ?
-                                        'Collected!' : 'Tagged!';
+                                        'Collected!' : (action === 'no_payment' ? 'Tagged!' : 'Reversed!');
                                     Swal.fire({
                                         title: successTitle,
                                         text: response.message,
