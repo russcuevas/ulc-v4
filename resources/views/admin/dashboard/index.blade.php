@@ -526,8 +526,16 @@
                         </table>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <div class="modal-footer d-flex justify-content-between align-items-center">
+                    <div>
+                        <button type="button" class="btn btn-success btn-sm mr-2" id="printPaidBtn">
+                            <i class="fas fa-print mr-1"></i> Print Paid
+                        </button>
+                        <button type="button" class="btn btn-danger btn-sm" id="printUnpaidBtn">
+                            <i class="fas fa-print mr-1"></i> Print Unpaid
+                        </button>
+                    </div>
+                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
@@ -702,6 +710,12 @@
         $(function() {
             buildCharts();
 
+            let currentModalType = '';
+            let currentModalName = '';
+            let currentFromDate = '';
+            let currentToDate = '';
+            let currentPaymentsData = [];
+
             // Click handler to view payment details
             $('.view-payments').on('click', function(e) {
                 e.preventDefault();
@@ -712,6 +726,12 @@
                 const fromDate = $('input[name="from"]').val();
                 const toDate = $('input[name="to"]').val();
                 
+                currentModalType = type;
+                currentModalName = name;
+                currentFromDate = fromDate;
+                currentToDate = toDate;
+                currentPaymentsData = [];
+
                 $('#paymentDetailsTargetName').text(name + ' (' + (type === 'location' ? 'Location' : 'Area') + ')');
                 
                 // Date range display text
@@ -741,6 +761,7 @@
                     },
                     success: function(response) {
                         $('#paymentsLoader').hide();
+                        currentPaymentsData = response || [];
                         
                         if (response && response.length > 0) {
                             let rows = '';
@@ -778,6 +799,125 @@
                         $('#paymentsLoader').hide();
                         $('#paymentsError').show();
                         console.error('Error fetching payments:', err);
+                    }
+                });
+            });
+
+            // Print Paid Handler
+            $('#printPaidBtn').on('click', function() {
+                if (!currentPaymentsData || currentPaymentsData.length === 0) {
+                    alert('No paid collection data to print.');
+                    return;
+                }
+
+                let printWindow = window.open('', '_blank');
+                let dateStr = (currentFromDate && currentToDate) ? currentFromDate + ' to ' + currentToDate : 'All Time Collection';
+                let totalAmt = 0;
+                
+                let tableRows = '';
+                currentPaymentsData.forEach(function(p, i) {
+                    let amt = parseFloat(p.amount) || 0;
+                    totalAmt += amt;
+                    tableRows += '<tr>' +
+                        '<td>' + (i + 1) + '</td>' +
+                        '<td>' + (p.client_name || 'N/A') + '</td>' +
+                        '<td>' + (p.location_name || 'N/A') + '</td>' +
+                        '<td>' + (p.areas_name || 'N/A') + '</td>' +
+                        '<td class="text-right">₱' + amt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</td>' +
+                        '<td>' + (p.collector_name || 'N/A') + '</td>' +
+                        '<td>' + (p.due_date || 'N/A') + '</td>' +
+                        '</tr>';
+                });
+
+                let html = '<!DOCTYPE html><html><head><title>Print Paid Collections</title>' +
+                    '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">' +
+                    '<style>body{font-family:Arial,sans-serif;font-size:12px;padding:20px;} table th, table td{font-size:11px;padding:6px;} .header-title{font-size:18px;font-weight:bold;text-align:center;} .header-sub{text-align:center;font-size:14px;margin-bottom:15px;}</style>' +
+                    '</head><body>' +
+                    '<div class="header-title">ULTRARITZ LENDING CORPORATION</div>' +
+                    '<div class="header-sub">PAID COLLECTIONS REPORT - ' + currentModalName.toUpperCase() + ' (' + (currentModalType === 'location' ? 'LOCATION' : 'AREA') + ')<br><small>Date: ' + dateStr + '</small></div>' +
+                    '<table class="table table-bordered table-striped">' +
+                    '<thead class="thead-light"><tr><th>#</th><th>Client Name</th><th>Location</th><th>Area</th><th class="text-right">Amount Paid</th><th>Collector</th><th>Payment Date</th></tr></thead>' +
+                    '<tbody>' + tableRows + '</tbody>' +
+                    '<tfoot><tr><th colspan="4" class="text-right">TOTAL PAID COLLECTION:</th><th class="text-right">₱' + totalAmt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</th><th colspan="2"></th></tr></tfoot>' +
+                    '</table>' +
+                    '<script>window.onload = function() { window.print(); };<\/script>' +
+                    '</body></html>';
+
+                printWindow.document.write(html);
+                printWindow.document.close();
+            });
+
+            // Print Unpaid Handler
+            $('#printUnpaidBtn').on('click', function() {
+                if (!currentModalName) {
+                    alert('No location or area selected.');
+                    return;
+                }
+
+                const $btn = $(this);
+                $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Loading...');
+
+                $.ajax({
+                    url: "{{ route('admin.dashboard.unpaid_details') }}",
+                    method: 'GET',
+                    data: {
+                        type: currentModalType,
+                        name: currentModalName
+                    },
+                    success: function(response) {
+                        $btn.prop('disabled', false).html('<i class="fas fa-print mr-1"></i> Print Unpaid');
+
+                        if (!response || response.length === 0) {
+                            alert('No unpaid loans found for ' + currentModalName + '.');
+                            return;
+                        }
+
+                        let printWindow = window.open('', '_blank');
+                        let totalUnpaid = 0;
+                        let totalLoanAmt = 0;
+                        
+                        let tableRows = '';
+                        response.forEach(function(u, i) {
+                            let bal = parseFloat(u.outstanding_balance) || 0;
+                            let loanAmt = parseFloat(u.loan_amount) || 0;
+                            let daily = parseFloat(u.daily) || 0;
+                            totalUnpaid += bal;
+                            totalLoanAmt += loanAmt;
+
+                            tableRows += '<tr>' +
+                                '<td>' + (i + 1) + '</td>' +
+                                '<td>' + (u.client_name || 'N/A') + '</td>' +
+                                '<td>' + (u.location_name || 'N/A') + '</td>' +
+                                '<td>' + (u.areas_name || 'N/A') + '</td>' +
+                                '<td>' + (u.pn_number || 'N/A') + '</td>' +
+                                '<td class="text-right">₱' + loanAmt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</td>' +
+                                '<td class="text-right text-danger font-weight-bold">₱' + bal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</td>' +
+                                '<td class="text-right">₱' + daily.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</td>' +
+                                '<td>' + (u.status ? u.status.toUpperCase() : 'UNPAID') + '</td>' +
+                                '</tr>';
+                        });
+
+                        let html = '<!DOCTYPE html><html><head><title>Print Unpaid Clients / Loans</title>' +
+                            '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">' +
+                            '<style>body{font-family:Arial,sans-serif;font-size:12px;padding:20px;} table th, table td{font-size:11px;padding:6px;} .header-title{font-size:18px;font-weight:bold;text-align:center;} .header-sub{text-align:center;font-size:14px;margin-bottom:15px;}</style>' +
+                            '</head><body>' +
+                            '<div class="header-title">ULTRARITZ LENDING CORPORATION</div>' +
+                            '<div class="header-sub">UNPAID CLIENTS / LOANS REPORT - ' + currentModalName.toUpperCase() + ' (' + (currentModalType === 'location' ? 'LOCATION' : 'AREA') + ')<br><small>As of Date: ' + new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + '</small></div>' +
+                            '<table class="table table-bordered table-striped">' +
+                            '<thead class="thead-light"><tr><th>#</th><th>Client Name</th><th>Location</th><th>Area</th><th>PN #</th><th class="text-right">Loan Amount</th><th class="text-right">Outstanding Balance</th><th class="text-right">Daily</th><th>Status</th></tr></thead>' +
+                            '<tbody>' + tableRows + '</tbody>' +
+                            '<tfoot><tr><th colspan="5" class="text-right">TOTAL UNPAID / OUTSTANDING:</th><th class="text-right">₱' + totalLoanAmt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</th><th class="text-right text-danger">₱' + totalUnpaid.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</th><th colspan="2"></th></tr></tfoot>' +
+                            '</table>' +
+                            '<script>window.onload = function() { window.print(); };<\/script>' +
+                            '</body></html>';
+
+                        printWindow.document.write(html);
+                        printWindow.document.close();
+                    },
+                    error: function(err) {
+                        $btn.prop('disabled', false).html('<i class="fas fa-print mr-1"></i> Print Unpaid');
+                        alert('Failed to retrieve unpaid loans. Please try again.');
+                        console.error('Error fetching unpaid details:', err);
                     }
                 });
             });

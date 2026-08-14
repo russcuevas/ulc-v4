@@ -72,6 +72,8 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
         ->name('admin.dashboard.page');
     Route::get('/dashboard/payment-details', [AdminDashboardController::class, 'getPaymentDetails'])
         ->name('admin.dashboard.payment_details');
+    Route::get('/dashboard/unpaid-details', [AdminDashboardController::class, 'getUnpaidDetails'])
+        ->name('admin.dashboard.unpaid_details');
 
     // SECRETARY
     Route::get('/secretary', [AdminSecretaryController::class, 'AdminSecretaryPage'])

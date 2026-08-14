@@ -251,5 +251,47 @@ class AdminDashboardController extends Controller
 
         return response()->json($payments);
     }
+
+    public function getUnpaidDetails(Request $request)
+    {
+        $type = $request->query('type'); // 'location' or 'area'
+        $name = $request->query('name');
+
+        $query = DB::table('clients_loans as cl')
+            ->join('clients as c', 'cl.client_id', '=', 'c.id')
+            ->join('areas as a', 'c.area_id', '=', 'a.id')
+            ->leftJoin('collectors as col', 'a.collector_id', '=', 'col.id')
+            ->where('cl.balance', '>', 0)
+            ->where(function ($q) {
+                $q->where('cl.status', 'unpaid')
+                  ->orWhere('cl.status', 'active')
+                  ->orWhere('cl.status', 'lapsed');
+            });
+
+        if ($type === 'location') {
+            $query->where('a.location_name', $name);
+        } else {
+            $query->where('a.areas_name', $name);
+        }
+
+        $unpaid = $query->select([
+            'c.fullname as client_name',
+            'a.location_name',
+            'a.areas_name',
+            'cl.pn_number',
+            'cl.loan_amount',
+            'cl.balance as outstanding_balance',
+            'cl.daily',
+            'cl.loan_from',
+            'cl.loan_to',
+            'cl.status',
+            'col.fullname as collector_name'
+        ])
+        ->orderBy('a.areas_name', 'asc')
+        ->orderBy('c.fullname', 'asc')
+        ->get();
+
+        return response()->json($unpaid);
+    }
 }
 
