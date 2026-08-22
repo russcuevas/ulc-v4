@@ -442,4 +442,10 @@ class SecretaryClientsController extends Controller
             'paymentsGrid'
         ));
     }
+
+    public function SecretaryGetAreaNextPn($id)
+    {
+        $details = getAreaPnDetails($id);
+        return response()->json($details);
+    }
 }

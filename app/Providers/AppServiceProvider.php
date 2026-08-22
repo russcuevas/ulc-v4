@@ -5,6 +5,7 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 
 require_once app_path('Helpers/sms_helpers.php');
+require_once app_path('Helpers/loan_helpers.php');
 
 class AppServiceProvider extends ServiceProvider
 {

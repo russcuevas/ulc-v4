@@ -56,11 +56,13 @@
                                 <input type="hidden" name="loan_id" value="{{ $latestLoan->id }}">
 
                                 <div class="form-group">
-                                    <span style="color: red;">LAST PN:
-                                        [{{ \DB::table('clients_loans')->latest('id')->value('pn_number') ?? 'N/A' }}]
-                                    </span><br>
-                                    <label>PN Number *</label>
-                                    <input type="text" name="pn_number" class="form-control"
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <label class="mb-0 font-weight-bold">PN Number *</label>
+                                        <span class="badge badge-warning text-dark font-weight-bold px-2 py-1" style="font-size: 12px; background-color: #fff3cd; border: 1px solid #ffeeba;">
+                                            LAST PN: <span class="text-danger">[{{ getAreaLastPn($client->area_id) }}]</span>
+                                        </span>
+                                    </div>
+                                    <input type="text" name="pn_number" class="form-control font-weight-bold"
                                         value="{{ $latestLoan->pn_number }}" required>
                                 </div>
 

@@ -114,6 +114,9 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
     Route::post('/areas/clients/{id}/add', [AdminManilaClientsController::class, 'AdminManilaAddClientRequest'])
         ->name('admin.area.clients.add');
 
+    Route::get('/areas/{id}/next-pn', [AdminManilaClientsController::class, 'AdminGetAreaNextPn'])
+        ->name('admin.areas.next_pn');
+
     Route::get('/areas/clients/{id}/loans', [AdminManilaClientsController::class, 'AdminManilaViewClientLoans'])
         ->name('admin.area.clients.loans');
 
@@ -204,6 +207,9 @@ Route::middleware('role:secretary')->prefix('secretary')->name('secretary.')->gr
 
     Route::post('/areas/clients/{id}/add', [SecretaryClientsController::class, 'SecretaryAddClientRequest'])
         ->name('area.clients.add');
+
+    Route::get('/areas/{id}/next-pn', [SecretaryClientsController::class, 'SecretaryGetAreaNextPn'])
+        ->name('areas.next_pn');
 
     Route::get('/areas/clients/{id}/loans', [SecretaryClientsController::class, 'SecretaryViewClientLoans'])
         ->name('area.clients.loans');

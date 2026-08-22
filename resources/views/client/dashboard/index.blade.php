@@ -165,6 +165,143 @@
             z-index: 10;
         }
 
+        /* Financial Counselor Contact Banner (Top Right in Body) */
+        .fc-contact-banner {
+            display: inline-flex;
+            align-items: center;
+            gap: 14px;
+            background: linear-gradient(135deg, #ffffff 0%, #fff7ee 100%);
+            border: 1.5px solid #fed7aa;
+            border-radius: 16px;
+            padding: 10px 18px;
+            box-shadow: 0 4px 14px rgba(255, 95, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.03);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            text-decoration: none !important;
+            color: #1e293b;
+        }
+
+        .fc-contact-banner:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(255, 95, 0, 0.16);
+            border-color: #fb923c;
+            color: #1e293b;
+        }
+
+        .fc-contact-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #FF5F00, #ff8533);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 17px;
+            flex-shrink: 0;
+            box-shadow: 0 3px 10px rgba(255, 95, 0, 0.3);
+            position: relative;
+        }
+
+        .fc-pulse-ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 12px;
+            background: rgba(255, 95, 0, 0.4);
+            animation: fcContactPulse 2s infinite;
+            z-index: 0;
+        }
+
+        .fc-contact-icon i {
+            position: relative;
+            z-index: 1;
+        }
+
+        @keyframes fcContactPulse {
+            0% {
+                transform: scale(1);
+                opacity: 0.8;
+            }
+            100% {
+                transform: scale(1.35);
+                opacity: 0;
+            }
+        }
+
+        .fc-contact-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .fc-contact-subtitle {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 13px;
+            color: #1e293b;
+            line-height: 1.2;
+            letter-spacing: -0.2px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .fc-live-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #22c55e;
+            box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+            display: inline-block;
+        }
+
+        .fc-contact-main {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .fc-contact-label {
+            font-size: 11px;
+            font-weight: 700;
+            background: #ffedd5;
+            color: #c2410c;
+            padding: 2px 7px;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .fc-contact-phone {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+            font-size: 15px;
+            color: #FF5F00;
+            line-height: 1.2;
+            letter-spacing: 0.3px;
+        }
+
+        .fc-call-badge {
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            background: rgba(255, 95, 0, 0.08);
+            border: 1px solid rgba(255, 95, 0, 0.15);
+            color: #FF5F00;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            transition: all 0.2s ease;
+            margin-left: 4px;
+        }
+
+        .fc-contact-banner:hover .fc-call-badge {
+            background: #FF5F00;
+            color: #ffffff;
+            transform: scale(1.05);
+        }
+
         /* Mobile Responsive Sidebar toggling */
         .mobile-header {
             display: none;
@@ -514,6 +651,42 @@
 
         <!-- Main Body Wrapper -->
         <div class="main-body-container">
+            @php
+                $isFC = $area && stripos($area->location_name ?? '', 'Financial Counselor') !== false;
+            @endphp
+
+            <!-- Dashboard Overview & Top-Right Banner Row -->
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
+                <div>
+                    <h2 class="h4 font-family-outfit fw-bold text-dark mb-1">
+                        Client Overview
+                    </h2>
+                    <p class="text-muted small mb-0">View your active loan portfolio, balance, and transaction history.</p>
+                </div>
+
+                @if ($isFC)
+                    <!-- Top Right Contact Banner: Only Visible to Financial Counselor Area -->
+                    <a href="tel:09171128021" class="fc-contact-banner" title="Contact Ultraritz Financing Corporation">
+                        <div class="fc-contact-icon">
+                            <div class="fc-pulse-ring"></div>
+                            <i class="fas fa-headset"></i>
+                        </div>
+                        <div class="fc-contact-info">
+                            <div class="fc-contact-subtitle">
+                                <span class="fc-live-dot"></span>
+                                Ultraritz Financing Corporation
+                            </div>
+                            <div class="fc-contact-main">
+                                <span class="fc-contact-label">Contact us :</span>
+                                <span class="fc-contact-phone">0917 112 8021</span>
+                            </div>
+                        </div>
+                        <div class="fc-call-badge d-none d-sm-flex">
+                            <i class="fas fa-phone-alt"></i>
+                        </div>
+                    </a>
+                @endif
+            </div>
 
             <div class="row">
                 <!-- Left Column: Client Profile -->
@@ -671,6 +844,15 @@
                                 </tbody>
                             </table>
                         </div>
+
+                        <!-- Payment Loading Spinner -->
+                        <div id="payment-loading-spinner" class="text-center py-4 d-none">
+                            <div class="spinner-border spinner-border-sm" role="status" style="color: #FF5F00; width: 1.75rem; height: 1.75rem; border-width: 0.2em;">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <div class="text-muted small mt-2 fw-medium">Loading more payments...</div>
+                        </div>
+                        <div id="payment-scroll-sentinel" style="height: 10px;"></div>
                     </div>
                 </div>
             </div>
@@ -772,10 +954,13 @@
             const isFC = {{ $isFC ? 'true' : 'false' }};
             const tableBody = document.getElementById('payment-table-body');
             const searchInput = document.getElementById('payment-search-input');
+            const loadingSpinner = document.getElementById('payment-loading-spinner');
+            const scrollSentinel = document.getElementById('payment-scroll-sentinel');
 
-            let chunkSize = 15;
-            let loadedCount = 15;
+            const chunkSize = 10;
+            let loadedCount = 0;
             let filteredPayments = [...allPayments];
+            let isLoading = false;
 
             function formatDate(dateStr) {
                 if (!dateStr) return 'N/A';
@@ -808,12 +993,50 @@
                 });
             }
 
-            function renderPayments(append = false) {
-                if (!tableBody) return;
+            function createRowHtml(payment) {
+                const dateFormatted = formatDate(payment.due_date);
+                const timeFormatted = formatTime(payment.created_at);
+                const remainingBalance = payment.hasOwnProperty('computed_remaining_balance') 
+                    ? payment.computed_remaining_balance 
+                    : Math.max(0, (payment.old_balance || 0) - payment.collection);
+                const oldBalanceFormatted = formatCurrency(remainingBalance);
+                const collectionFormatted = formatCurrency(payment.collection);
+                const savingsFormatted = formatCurrency(payment.savings_amount || 0);
+                const paymentType = payment.type ? payment.type : 'Daily';
+                const collectorName = payment.collected_by_name || payment.collected_by || 'N/A';
 
-                if (!append) {
-                    tableBody.innerHTML = '';
-                }
+                return `
+                    <tr>
+                        <td>
+                            <div>${dateFormatted}</div>
+                            <div class="text small text-muted">${timeFormatted}</div>
+                        </td>
+                        <td class="fw-bold text-dark">
+                            ${collectorName}
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark border text-capitalize">
+                                ${paymentType}
+                            </span>
+                        </td>
+                        <td class="text-end font-monospace text-warning fw-bold">
+                            ${oldBalanceFormatted}
+                        </td>
+                        <td class="text-end font-monospace text-success fw-bold">
+                            ${collectionFormatted}
+                        </td>
+                        ${isFC ? `
+                            <td class="text-end font-monospace text-success fw-bold">
+                                ${savingsFormatted}
+                            </td>
+                        ` : ''}
+                    </tr>
+                `;
+            }
+
+            function renderInitial() {
+                if (!tableBody) return;
+                tableBody.innerHTML = '';
 
                 if (filteredPayments.length === 0) {
                     const cols = isFC ? 6 : 5;
@@ -827,63 +1050,42 @@
                             </td>
                         </tr>
                     `;
+                    if (loadingSpinner) loadingSpinner.classList.add('d-none');
                     return;
                 }
 
-                const startIndex = append ? loadedCount - chunkSize : 0;
-                const endIndex = Math.min(loadedCount, filteredPayments.length);
-
+                loadedCount = Math.min(chunkSize, filteredPayments.length);
                 let rowsHtml = '';
-                for (let i = startIndex; i < endIndex; i++) {
-                    const payment = filteredPayments[i];
-                    const dateFormatted = formatDate(payment.due_date);
-                    const timeFormatted = formatTime(payment.created_at);
-                    const remainingBalance = payment.hasOwnProperty('computed_remaining_balance') 
-                        ? payment.computed_remaining_balance 
-                        : Math.max(0, (payment.old_balance || 0) - payment.collection);
-                    const oldBalanceFormatted = formatCurrency(remainingBalance);
-                    const collectionFormatted = formatCurrency(payment.collection);
-                    const savingsFormatted = formatCurrency(payment.savings_amount || 0);
-                    const paymentType = payment.type ? payment.type : 'Daily';
-
-                    rowsHtml += `
-                        <tr>
-                            <td>
-                                <div>${dateFormatted}</div>
-                                <div class="text small">${timeFormatted}</div>
-                            </td>
-                            <td class="fw-bold text-white">
-                                ${payment.collected_by_name || payment.collected_by || 'N/A'}
-                            </td>
-                            <td>
-                                <span class="badge bg-dark border border-secondary text-capitalize">
-                                    ${paymentType}
-                                </span>
-                            </td>
-                            <td class="text-end font-monospace text-warning fw-bold">
-                                ${oldBalanceFormatted}
-                            </td>
-                            <td class="text-end font-monospace text-success fw-bold">
-                                ${collectionFormatted}
-                            </td>
-                            ${isFC ? `
-                                                                            <td class="text-end font-monospace text-success fw-bold">
-                                                                                ${savingsFormatted}
-                                                                            </td>
-                                                                        ` : ''}
-                        </tr>
-                    `;
+                for (let i = 0; i < loadedCount; i++) {
+                    rowsHtml += createRowHtml(filteredPayments[i]);
                 }
+                tableBody.innerHTML = rowsHtml;
+                if (loadingSpinner) loadingSpinner.classList.add('d-none');
+            }
 
-                if (append) {
-                    tableBody.insertAdjacentHTML('beforeend', rowsHtml);
-                } else {
-                    tableBody.innerHTML = rowsHtml;
-                }
+            function loadMore() {
+                if (isLoading || loadedCount >= filteredPayments.length) return;
+
+                isLoading = true;
+                if (loadingSpinner) loadingSpinner.classList.remove('d-none');
+
+                setTimeout(() => {
+                    const nextEnd = Math.min(loadedCount + chunkSize, filteredPayments.length);
+                    let rowsHtml = '';
+                    for (let i = loadedCount; i < nextEnd; i++) {
+                        rowsHtml += createRowHtml(filteredPayments[i]);
+                    }
+                    if (tableBody) {
+                        tableBody.insertAdjacentHTML('beforeend', rowsHtml);
+                    }
+                    loadedCount = nextEnd;
+                    if (loadingSpinner) loadingSpinner.classList.add('d-none');
+                    isLoading = false;
+                }, 300);
             }
 
             // Perform initial render
-            renderPayments();
+            renderInitial();
 
             // Search input filter event
             if (searchInput) {
@@ -896,26 +1098,34 @@
                         filteredPayments = allPayments.filter(payment => {
                             const dateStr = formatDate(payment.due_date).toLowerCase();
                             const timeStr = formatTime(payment.created_at).toLowerCase();
-                            const collectorStr = (payment.collected_by_name || payment
-                                .collected_by || '').toString().toLowerCase();
+                            const collectorStr = (payment.collected_by_name || payment.collected_by || '').toString().toLowerCase();
                             const typeStr = (payment.type || 'Daily').toLowerCase();
-                            return dateStr.includes(query) || timeStr.includes(query) ||
-                                collectorStr
-                                .includes(query) || typeStr.includes(query);
+                            return dateStr.includes(query) || timeStr.includes(query) || collectorStr.includes(query) || typeStr.includes(query);
                         });
                     }
 
-                    loadedCount = chunkSize;
-                    renderPayments(false);
+                    renderInitial();
                 });
             }
 
-            // Infinite Scroll listener
+            // Infinite Scroll using IntersectionObserver + Scroll Listener Fallback
+            if ('IntersectionObserver' in window && scrollSentinel) {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting && !isLoading && loadedCount < filteredPayments.length) {
+                            loadMore();
+                        }
+                    });
+                }, {
+                    rootMargin: '100px'
+                });
+                observer.observe(scrollSentinel);
+            }
+
             window.addEventListener('scroll', function() {
-                if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 150) {
-                    if (loadedCount < filteredPayments.length) {
-                        loadedCount += chunkSize;
-                        renderPayments(true);
+                if (!isLoading && loadedCount < filteredPayments.length) {
+                    if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 250) {
+                        loadMore();
                     }
                 }
             });

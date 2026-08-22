@@ -465,4 +465,10 @@ class AdminManilaClientsController extends Controller
             'paymentsGrid'
         ));
     }
+
+    public function AdminGetAreaNextPn($id)
+    {
+        $details = getAreaPnDetails($id);
+        return response()->json($details);
+    }
 }

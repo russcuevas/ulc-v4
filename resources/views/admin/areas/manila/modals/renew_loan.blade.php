@@ -54,12 +54,22 @@
                         <div class="col-md-6">
                             <h6 class="text-primary font-weight-bold mb-3">Renew Loan Information</h6>
 
+                            @php
+                                $pnDetails = getAreaPnDetails($client->area_id);
+                                $isManilaArea = $pnDetails['is_manila'];
+                            @endphp
                             <div class="form-group">
-                                <span style="color: red;">LAST PN:
-                                    [{{ \DB::table('clients_loans')->latest('id')->value('pn_number') ?? 'N/A' }}]
-                                </span><br>
-                                <label>PN Number *</label>
-                                <input type="text" name="pn_number" class="form-control" required>
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <label class="mb-0 font-weight-bold">PN Number *</label>
+                                    <span class="badge badge-warning text-dark font-weight-bold px-2 py-1" id="renew_client_last_pn_badge" style="font-size: 12px; background-color: #fff3cd; border: 1px solid #ffeeba;">
+                                        LAST PN: <span id="renew_client_last_pn_text" class="text-danger">[{{ $pnDetails['last_pn'] }}]</span>
+                                    </span>
+                                </div>
+                                <input type="text" name="pn_number" id="renew_client_pn_number" class="form-control font-weight-bold text-dark"
+                                    value="{{ $pnDetails['next_pn'] }}" required>
+                                @if ($isManilaArea)
+                                    <small class="form-text text-muted">Auto-suggested based on Manila Area <strong>{{ $areas_name ?? '' }}</strong> last PN.</small>
+                                @endif
                             </div>
 
                             <div class="form-group">
@@ -132,4 +142,21 @@
             document.getElementById('renew_loan_to').value = toDate;
         }
     });
+
+    // Real-time PN refresh on modal open
+    if (window.jQuery) {
+        $('#renewLoanModal').on('show.bs.modal', function() {
+            fetch("{{ route('admin.areas.next_pn', $client->area_id) }}")
+                .then(res => res.json())
+                .then(data => {
+                    if (data) {
+                        $('#renew_client_last_pn_text').text('[' + (data.last_pn || 'N/A') + ']');
+                        if (data.is_manila && data.next_pn) {
+                            $('#renew_client_pn_number').val(data.next_pn);
+                        }
+                    }
+                })
+                .catch(err => console.log('Error refreshing renew PN:', err));
+        });
+    }
 </script>
