@@ -47,6 +47,23 @@
                                         Female</option>
                                 </select>
                             </div>
+
+                            @if (isset($allAreas) && count($allAreas) > 0)
+                                <div class="form-group">
+                                    <label>Assigned Area / Location</label>
+                                    <select name="area_id" class="form-control" required>
+                                        @foreach ($allAreas as $areaOption)
+                                            <option value="{{ $areaOption->id }}"
+                                                {{ ($client->area_id == $areaOption->id || ($location_name == $areaOption->location_name && $areas_name == $areaOption->areas_name)) ? 'selected' : '' }}>
+                                                {{ $areaOption->location_name }} - [{{ $areaOption->areas_name }}]
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <small class="text-muted">
+                                        <i class="fas fa-info-circle"></i> Changing area preserves all loan & payment history.
+                                    </small>
+                                </div>
+                            @endif
                         </div>
 
                         <!-- Latest Loan Info -->

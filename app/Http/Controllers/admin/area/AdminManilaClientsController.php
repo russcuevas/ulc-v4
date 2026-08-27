@@ -30,8 +30,16 @@ class AdminManilaClientsController extends Controller
 
         $clients = Clients::whereIn('area_id', $matchedAreaIds)->get();
 
-        // Pass the current area ID to the view
-        return view('admin.areas.manila.clients', compact('clients', 'areas_name', 'location_name', 'id'));
+        $allAreas = DB::table('areas')
+            ->select(DB::raw('MIN(id) as id'), 'location_name', 'areas_name')
+            ->groupBy('location_name', 'areas_name')
+            ->orderBy('location_name')
+            ->orderBy('areas_name')
+            ->get()
+            ->sortBy('areas_name', SORT_NATURAL);
+
+        // Pass the current area ID and all areas to the view
+        return view('admin.areas.manila.clients', compact('clients', 'areas_name', 'location_name', 'id', 'allAreas'));
     }
 
     public function AdminManilaAddClientRequest(Request $request, $id)
@@ -128,7 +136,16 @@ class AdminManilaClientsController extends Controller
             ->where('client_id', $id)
             ->orderBy('created_at', 'desc')
             ->get();
-        return view('admin.areas.manila.view_loans', compact('areas_name', 'location_name', 'client', 'loans'));
+
+        $allAreas = DB::table('areas')
+            ->select(DB::raw('MIN(id) as id'), 'location_name', 'areas_name')
+            ->groupBy('location_name', 'areas_name')
+            ->orderBy('location_name')
+            ->orderBy('areas_name')
+            ->get()
+            ->sortBy('areas_name', SORT_NATURAL);
+
+        return view('admin.areas.manila.view_loans', compact('areas_name', 'location_name', 'client', 'loans', 'allAreas'));
     }
 
     public function AdminManilaUpdateClientRequest(Request $request, $id)
@@ -138,6 +155,7 @@ class AdminManilaClientsController extends Controller
             'phone' => 'required|string|max:20',
             'phone_number_2' => 'nullable|string|max:20',
             'gender' => 'required|string',
+            'area_id' => 'nullable|exists:areas,id',
             // Loan validation if loan_id is present
             'loan_id' => 'nullable|exists:clients_loans,id',
             'pn_number' => 'required_with:loan_id|string|unique:clients_loans,pn_number,' . $request->loan_id,
@@ -152,12 +170,18 @@ class AdminManilaClientsController extends Controller
 
         DB::transaction(function () use ($request, $id) {
             $client = Clients::findOrFail($id);
-            $client->update([
+            $clientUpdate = [
                 'fullname' => $request->fullname,
                 'phone' => $request->phone,
                 'phone_number_2' => $request->phone_number_2,
                 'gender' => $request->gender,
-            ]);
+            ];
+
+            if ($request->filled('area_id')) {
+                $clientUpdate['area_id'] = $request->area_id;
+            }
+
+            $client->update($clientUpdate);
 
             if ($request->has('loan_id')) {
                 DB::table('clients_loans')
@@ -177,6 +201,41 @@ class AdminManilaClientsController extends Controller
         });
 
         return back()->with('success', 'Information updated successfully!');
+    }
+
+    public function AdminReassignClientArea(Request $request, $id)
+    {
+        $request->validate([
+            'area_id' => 'required|exists:areas,id',
+        ]);
+
+        $client = Clients::findOrFail($id);
+        $oldArea = DB::table('areas')->where('id', $client->area_id)->first();
+        $newArea = DB::table('areas')->where('id', $request->area_id)->first();
+
+        $oldName = $oldArea ? ($oldArea->location_name . ' - ' . $oldArea->areas_name) : 'Unknown Area';
+        $newName = $newArea ? ($newArea->location_name . ' - ' . $newArea->areas_name) : 'Unknown Area';
+
+        $client->update([
+            'area_id' => $request->area_id,
+        ]);
+
+        try {
+            DB::table('area_notifications')->insert([
+                'area_id' => $request->area_id,
+                'type' => 'client_reassigned',
+                'data' => json_encode([
+                    'client_id' => $client->id,
+                    'message' => "Client {$client->fullname} was transferred from {$oldName} to {$newName}.",
+                ]),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        } catch (\Exception $e) {
+            // Do not block on notification failure
+        }
+
+        return redirect()->back()->with('success', "Client {$client->fullname} successfully moved to {$newName}! All loan and payment history is preserved.");
     }
 
     public function AdminManilaSubmitRenewLoan(Request $request, $clientId)

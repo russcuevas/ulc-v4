@@ -82,15 +82,22 @@ class ManagementAreaController extends Controller
             ->get();
 
         $references = $references->map(function ($ref) use ($matchedAreaIds) {
+            $paymentLoanIds = DB::table('clients_payments')
+                ->where('reference_number', $ref->reference_number)
+                ->pluck('client_loans_id')
+                ->toArray();
+
             $loans = DB::table('clients_loans as cl')
                 ->join('clients as c', 'cl.client_id', '=', 'c.id')
-                ->whereIn('c.area_id', $matchedAreaIds)
+                ->where(function ($q) use ($matchedAreaIds, $paymentLoanIds) {
+                    $q->whereIn('c.area_id', $matchedAreaIds)
+                      ->orWhereIn('cl.id', $paymentLoanIds);
+                })
                 ->whereDate('cl.loan_from', '<=', $ref->due_date)
                 ->select('cl.*', 'c.id as client_id')
                 ->get();
 
             $payments = DB::table('clients_payments')
-                ->whereIn('client_area', $matchedAreaIds)
                 ->where('reference_number', $ref->reference_number)
                 ->get()
                 ->keyBy('client_loans_id');
@@ -107,11 +114,11 @@ class ManagementAreaController extends Controller
 
             $ref->total_collections = $filteredClients->sum(function ($loan) use ($payments) {
                 $payment = $payments[$loan->id] ?? null;
-                return $payment ? ($payment->collection ?? 0) : 0;
+                return $payment ? (float)($payment->collection ?? 0) : 0;
             });
 
             $ref->total_daily_collectibles = $filteredClients->sum(function ($loan) {
-                return $loan->daily ?? 0;
+                return (float)($loan->daily ?? 0);
             });
 
             return $ref;
@@ -156,9 +163,17 @@ class ManagementAreaController extends Controller
             ->pluck('id')
             ->toArray();
 
+        $paymentLoanIds = DB::table('clients_payments')
+            ->where('reference_number', $referenceNumber)
+            ->pluck('client_loans_id')
+            ->toArray();
+
         $loans = DB::table('clients_loans as cl')
             ->join('clients as c', 'cl.client_id', '=', 'c.id')
-            ->whereIn('c.area_id', $matchedAreaIds)
+            ->where(function ($q) use ($matchedAreaIds, $paymentLoanIds) {
+                $q->whereIn('c.area_id', $matchedAreaIds)
+                  ->orWhereIn('cl.id', $paymentLoanIds);
+            })
             ->whereDate('cl.loan_from', '<=', $selectedDate)
             ->select(
                 'cl.*',

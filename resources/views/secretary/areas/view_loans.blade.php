@@ -124,6 +124,11 @@
                                         <i class="fas fa-edit"></i> Edit information
                                     </button>
 
+                                    <button class="btn btn-sm btn-outline-warning mb-2" data-toggle="modal"
+                                        data-target="#reassignClientModal">
+                                        <i class="fas fa-exchange-alt"></i> Transfer Area
+                                    </button>
+
                                     <br>
 
                                     @if ($canRenew)
@@ -132,6 +137,60 @@
                                             <i class="fas fa-redo"></i> Renew Loan
                                         </button>
                                     @endif
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Reassign Client Modal -->
+                        <div class="modal fade" id="reassignClientModal" tabindex="-1" role="dialog" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered" role="document">
+                                <div class="modal-content">
+                                    <form method="POST" action="{{ route('secretary.area.clients.reassign', $client->id) }}">
+                                        @csrf
+                                        <div class="modal-header bg-warning text-dark">
+                                            <h5 class="modal-title font-weight-bold">
+                                                <i class="fas fa-exchange-alt mr-1"></i> Transfer Client to Another Area
+                                            </h5>
+                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                <span aria-hidden="true">&times;</span>
+                                            </button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="alert alert-info">
+                                                <i class="fas fa-shield-alt"></i> <strong>Safe Transfer:</strong> Moving this client will safely transfer their active profile to the selected area. All loan history, payments, PN numbers, and balances will be <strong>100% preserved</strong>.
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label class="font-weight-bold">Client Name:</label>
+                                                <input type="text" class="form-control font-weight-bold" value="{{ $client->fullname }}" readonly>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label class="font-weight-bold">Current Area:</label>
+                                                <input type="text" class="form-control bg-light" value="{{ $location_name }} - [{{ $areas_name }}]" readonly>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label class="font-weight-bold">Select New Area / Location: <span class="text-danger">*</span></label>
+                                                <select name="area_id" class="form-control font-weight-bold" required>
+                                                    <option value="" disabled selected>-- Select Destination Area --</option>
+                                                    @if (isset($allAreas))
+                                                        @foreach ($allAreas as $areaOption)
+                                                            <option value="{{ $areaOption->id }}" {{ $client->area_id == $areaOption->id ? 'disabled' : '' }}>
+                                                                {{ $areaOption->location_name }} - [{{ $areaOption->areas_name }}] {{ $client->area_id == $areaOption->id ? '(Current Area)' : '' }}
+                                                            </option>
+                                                        @endforeach
+                                                    @endif
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                                            <button type="submit" class="btn btn-warning font-weight-bold">
+                                                <i class="fas fa-check-circle"></i> Confirm Transfer
+                                            </button>
+                                        </div>
+                                    </form>
                                 </div>
                             </div>
                         </div>
