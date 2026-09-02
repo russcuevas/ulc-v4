@@ -139,3 +139,27 @@
       </li> -->
     </ul>
 </nav>
+
+@if(!Session::has('role') || Session::get('role') !== 'admin' || !env('OPERATING_HOURS_ADMIN_BYPASS', true))
+<script>
+    (function () {
+        function checkOperatingHours() {
+            var now = new Date();
+            var hours = now.getHours();
+            var minutes = now.getMinutes();
+
+            // Offline mula 5:01 PM hanggang 7:59 AM
+            var isAfterCloseTime = (hours > 17) || (hours === 17 && minutes >= 1);
+            var isBeforeOpenTime = (hours < 8);
+
+            if (isAfterCloseTime || isBeforeOpenTime) {
+                window.location.reload();
+            }
+        }
+
+        // Suriin bawat 15 segundo para maging realtime
+        setInterval(checkOperatingHours, 15000);
+    })();
+</script>
+@endif
+

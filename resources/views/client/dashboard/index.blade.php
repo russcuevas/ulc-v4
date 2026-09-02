@@ -1129,6 +1129,20 @@
                     }
                 }
             });
+
+            // Operating Hours Real-time Check (8:00 AM - 5:00 PM)
+            setInterval(function() {
+                var now = new Date();
+                var hours = now.getHours();
+                var minutes = now.getMinutes();
+
+                var isAfterCloseTime = (hours > 17) || (hours === 17 && minutes >= 1);
+                var isBeforeOpenTime = (hours < 8);
+
+                if (isAfterCloseTime || isBeforeOpenTime) {
+                    window.location.reload();
+                }
+            }, 15000);
         });
     </script>
 </body>
