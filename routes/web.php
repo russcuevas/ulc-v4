@@ -224,9 +224,6 @@ Route::middleware('role:secretary')->prefix('secretary')->name('secretary.')->gr
     Route::put('/areas/clients/{id}/update', [SecretaryClientsController::class, 'SecretaryUpdateClientRequest'])
         ->name('area.clients.update');
 
-    Route::post('/areas/clients/{id}/reassign', [SecretaryClientsController::class, 'SecretaryReassignClientArea'])
-        ->name('area.clients.reassign');
-
     Route::post('/areas/clients/{id}/renew-loan', [SecretaryClientsController::class, 'SecretarySubmitRenewLoan'])
         ->name('area.clients.renew.loan.add');
 

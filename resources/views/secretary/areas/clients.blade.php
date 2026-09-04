@@ -133,12 +133,6 @@
                                                     class="btn btn-sm btn-info">
                                                     <i class="fas fa-eye"></i> View Loans
                                                 </a>
-                                                <button type="button" class="btn btn-sm btn-warning reassign-client-btn"
-                                                    data-id="{{ $client->id }}"
-                                                    data-fullname="{{ $client->fullname }}"
-                                                    data-current-area="{{ $location_name ?? '' }} - [{{ $areas_name }}]">
-                                                    <i class="fas fa-exchange-alt"></i> Transfer
-                                                </button>
                                             </td>
                                         </tr>
                                     @endforeach
@@ -154,59 +148,6 @@
                         </div>
                     </div>
 
-                    <!-- Reassign Client Modal -->
-                    <div class="modal fade" id="reassignClientModal" tabindex="-1" role="dialog" aria-hidden="true">
-                        <div class="modal-dialog modal-dialog-centered" role="document">
-                            <div class="modal-content">
-                                <form id="reassignClientForm" method="POST" action="">
-                                    @csrf
-                                    <div class="modal-header bg-warning text-dark">
-                                        <h5 class="modal-title font-weight-bold">
-                                            <i class="fas fa-exchange-alt mr-1"></i> Transfer Client to Another Area
-                                        </h5>
-                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                            <span aria-hidden="true">&times;</span>
-                                        </button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <div class="alert alert-info">
-                                            <i class="fas fa-shield-alt"></i> <strong>Safe Transfer:</strong> Moving this client will transfer their active profile to the selected area. All existing loan history, payments, PN numbers, and balances will be <strong>100% preserved</strong>.
-                                        </div>
-
-                                        <div class="form-group">
-                                            <label class="font-weight-bold">Client Name:</label>
-                                            <input type="text" id="reassign_client_name" class="form-control font-weight-bold" readonly>
-                                        </div>
-
-                                        <div class="form-group">
-                                            <label class="font-weight-bold">Current Area:</label>
-                                            <input type="text" id="reassign_current_area" class="form-control bg-light" readonly>
-                                        </div>
-
-                                        <div class="form-group">
-                                            <label class="font-weight-bold">Select New Area / Location: <span class="text-danger">*</span></label>
-                                            <select name="area_id" id="reassign_target_area" class="form-control font-weight-bold" required>
-                                                <option value="" disabled selected>-- Select Destination Area --</option>
-                                                @if (isset($allAreas))
-                                                    @foreach ($allAreas as $areaOption)
-                                                        <option value="{{ $areaOption->id }}">
-                                                            {{ $areaOption->location_name }} - [{{ $areaOption->areas_name }}]
-                                                        </option>
-                                                    @endforeach
-                                                @endif
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                                        <button type="submit" class="btn btn-warning font-weight-bold">
-                                            <i class="fas fa-check-circle"></i> Confirm Transfer
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
 
                 </div>
             </section>
@@ -321,21 +262,6 @@
         });
     </script>
 
-    <script>
-        $(document).on('click', '.reassign-client-btn', function() {
-            var clientId = $(this).data('id');
-            var fullName = $(this).data('fullname');
-            var currentArea = $(this).data('current-area');
-
-            $('#reassign_client_name').val(fullName);
-            $('#reassign_current_area').val(currentArea);
-
-            var formAction = "{{ url('/secretary/areas/clients') }}/" + clientId + "/reassign";
-            $('#reassignClientForm').attr('action', formAction);
-
-            $('#reassignClientModal').modal('show');
-        });
-    </script>
 </body>
 
 </html>
