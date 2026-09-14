@@ -99,19 +99,19 @@
                                 <div class="form-group col-md-6">
                                     <label>Loan Amount *</label>
                                     <input type="number" name="loan_amount" id="sec_renew_loan_amount"
-                                        class="form-control" min="1" step="0.01" required>
+                                        class="form-control" min="0" step="any" required>
                                 </div>
 
                                 <div class="form-group col-md-6">
                                     <label>Balance *</label>
                                     <input type="number" name="balance" class="form-control" min="0"
-                                        step="0.01" required value="0">
+                                        step="any" required value="0">
                                 </div>
                             </div>
 
                             <div class="form-group">
                                 <label>Daily Payment *</label>
-                                <input type="number" name="daily" class="form-control" min="0" step="0.01"
+                                <input type="number" name="daily" class="form-control" min="0" step="any"
                                     required>
                             </div>
 

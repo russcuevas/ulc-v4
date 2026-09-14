@@ -37,24 +37,35 @@ class CheckOperatingHours
 
         $now = Carbon::now('Asia/Manila');
 
+        $role = Session::get('role');
+        $isSecretary = ($role === 'secretary');
+
         // Oras ng pagbubukas: 8:00 AM (08:00:00)
         $openTime = $now->copy()->setTime(8, 0, 0);
 
-        // Oras ng pagsasara: 5:00 PM (17:00:00)
-        $closeTime = $now->copy()->setTime(17, 0, 0);
+        // Oras ng pagsasara:
+        // Kapag secretary: 7:00 PM (19:00:00)
+        // Kapag ibang role / client: 5:00 PM (17:00:00)
+        $closeHour = $isSecretary ? 19 : 17;
+        $closeTimeFormatted = $isSecretary ? '7:00 PM' : '5:00 PM';
+        $offHoursFormatted = $isSecretary ? '7:01 PM – 7:59 AM' : '5:01 PM – 7:59 AM';
+        $closeTime = $now->copy()->setTime($closeHour, 0, 0);
 
-        // Kung bago mag 8:00 AM o lagpas na ng 5:00 PM (nagsisimula ng 5:01 PM pataas)
+        // Kung bago mag 8:00 AM o lagpas na sa closing time
         if ($now->lt($openTime) || $now->gt($closeTime)) {
             if ($request->expectsJson() || $request->is('api/*')) {
                 return response()->json([
                     'status' => 'closed',
-                    'message' => 'System is closed. Operating hours are from 8:00 AM to 5:00 PM only.'
+                    'message' => "System is closed. Operating hours are from 8:00 AM to {$closeTimeFormatted} only."
                 ], 503);
             }
 
             return response()->view('errors.system-closed', [
                 'currentTime' => $now->format('h:i:s A'),
                 'currentDate' => $now->format('F d, Y'),
+                'operatingHours' => "8:00 AM – {$closeTimeFormatted}",
+                'offHours' => $offHoursFormatted,
+                'closeTimeFormatted' => $closeTimeFormatted,
             ], 503);
         }
 

@@ -253,7 +253,7 @@
         <h1>System is Currently Closed</h1>
         <p class="description">
             Ang system ay offline sa labas ng itinakdang oras ng opisina. 
-            Maaari lamang ma-access ang mga transaksyon at serbisyo mula <strong>8:00 AM hanggang 5:00 PM</strong>.
+            Maaari lamang ma-access ang mga transaksyon at serbisyo mula <strong>{{ $operatingHours ?? '8:00 AM hanggang 5:00 PM' }}</strong>.
         </p>
 
         <div class="schedule-box">
@@ -261,14 +261,14 @@
                 <i class="fas fa-business-time"></i>
                 <div>
                     <div class="schedule-label">Operating Hours</div>
-                    <div class="schedule-value">8:00 AM – 5:00 PM</div>
+                    <div class="schedule-value">{{ $operatingHours ?? '8:00 AM – 5:00 PM' }}</div>
                 </div>
             </div>
             <div class="schedule-item">
                 <i class="fas fa-power-off"></i>
                 <div>
                     <div class="schedule-label">Off Hours</div>
-                    <div class="schedule-value">5:01 PM – 7:59 AM</div>
+                    <div class="schedule-value">{{ $offHours ?? '5:01 PM – 7:59 AM' }}</div>
                 </div>
             </div>
         </div>

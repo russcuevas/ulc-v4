@@ -103,19 +103,19 @@
                             <div class="form-row">
                                 <div class="form-group col-md-6">
                                     <label>Loan Amount *</label>
-                                    <input type="number" name="loan_amount" id="add_loan_amount" class="form-control"
+                                    <input type="number" step="any" min="0" name="loan_amount" id="add_loan_amount" class="form-control"
                                         required>
                                 </div>
 
                                 <div class="form-group col-md-6">
                                     <label>Balance *</label>
-                                    <input type="number" name="balance" class="form-control" required>
+                                    <input type="number" step="any" min="0" name="balance" class="form-control" required>
                                 </div>
                             </div>
 
                             <div class="form-group">
                                 <label>Daily Payment *</label>
-                                <input type="number" name="daily" class="form-control" required>
+                                <input type="number" step="any" min="0" name="daily" class="form-control" required>
                             </div>
 
                             <div class="form-group">
