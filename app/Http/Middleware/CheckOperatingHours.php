@@ -6,6 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\DB;
 
 class CheckOperatingHours
 {
@@ -23,6 +24,11 @@ class CheckOperatingHours
             return $next($request);
         }
 
+        // Payagan ang authentication routes para makapag-log in ang mga exempt accounts (Admin, Caloocan & Manila secretaries)
+        if ($request->is('login', 'login/*', 'logout')) {
+            return $next($request);
+        }
+
         // Bypasses: halimbawa kung admin ang naka-login at kailangan mag-maintain ng system
         // Tanggalin o i-comment ito kung nais na pati admin ay ma-shutdown.
         if (env('OPERATING_HOURS_ADMIN_BYPASS', true) && Session::get('role') === 'admin') {
@@ -33,6 +39,28 @@ class CheckOperatingHours
         $overrideKey = env('OPERATING_HOURS_OVERRIDE_KEY');
         if (!empty($overrideKey) && $request->query('override_key') === $overrideKey) {
             return $next($request);
+        }
+
+        // Bypasses para sa Caloocan at Manila Area Secretary mula sa locked hours
+        if (env('OPERATING_HOURS_CALOOCAN_MANILA_BYPASS', true) && Session::get('role') === 'secretary') {
+            $user = Session::get('user');
+            $secretaryId = is_object($user) ? ($user->id ?? null) : (is_array($user) ? ($user['id'] ?? null) : null);
+
+            if ($secretaryId) {
+                $isExempt = DB::table('areas')
+                    ->where('secretary_id', $secretaryId)
+                    ->where(function ($query) {
+                        $query->where('location_name', 'like', '%Caloocan%')
+                            ->orWhere('location_name', 'like', '%Manila%')
+                            ->orWhere('areas_name', 'like', 'CA%')
+                            ->orWhere('areas_name', 'like', 'MA%');
+                    })
+                    ->exists();
+
+                if ($isExempt) {
+                    return $next($request);
+                }
+            }
         }
 
         $now = Carbon::now('Asia/Manila');
