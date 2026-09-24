@@ -456,4 +456,170 @@ class SecretaryClientsController extends Controller
         $details = getAreaPnDetails($id);
         return response()->json($details);
     }
+
+    public function SecretaryWeeklyCollectionReport(Request $request, $id)
+    {
+        $area = DB::table('areas')->where('id', $id)->first();
+        if (!$area) {
+            abort(404, 'Area not found.');
+        }
+
+        $areas_name = $area->areas_name ?? 'Unknown Area';
+        $location_name = $area->location_name ?? 'Unknown Location';
+
+        $matchedAreaIds = DB::table('areas')
+            ->where('location_name', $location_name)
+            ->where('areas_name', $areas_name)
+            ->pluck('id')
+            ->toArray();
+
+        // Determine Date Range
+        $fromInput = $request->query('from');
+        $toInput = $request->query('to');
+
+        if ($fromInput && $toInput) {
+            $startDate = \Carbon\Carbon::parse($fromInput, 'Asia/Manila')->startOfDay();
+            $endDate = \Carbon\Carbon::parse($toInput, 'Asia/Manila')->endOfDay();
+        } else {
+            $startDate = \Carbon\Carbon::now('Asia/Manila')->startOfWeek();
+            $endDate = \Carbon\Carbon::now('Asia/Manila')->endOfWeek();
+        }
+
+        $fromFormatted = $startDate->format('Y-m-d');
+        $toFormatted = $endDate->format('Y-m-d');
+
+        // Dates that have payments/collections in this area within range
+        $paymentDates = DB::table('clients_payments')
+            ->whereIn('client_area', $matchedAreaIds)
+            ->whereBetween('due_date', [$fromFormatted, $toFormatted])
+            ->distinct()
+            ->orderBy('due_date', 'asc')
+            ->pluck('due_date')
+            ->map(function ($d) {
+                return \Carbon\Carbon::parse($d)->format('Y-m-d');
+            })
+            ->toArray();
+
+        // If no payments recorded in date range, generate days (excluding Sunday)
+        if (empty($paymentDates)) {
+            $dates = [];
+            $curr = $startDate->copy();
+            while ($curr->lte($endDate)) {
+                if (!$curr->isSunday()) {
+                    $dates[] = $curr->format('Y-m-d');
+                }
+                $curr->addDay();
+            }
+        } else {
+            $dates = $paymentDates;
+        }
+
+        // Clients belonging to this area
+        $clients = DB::table('clients as c')
+            ->whereIn('c.area_id', $matchedAreaIds)
+            ->orderBy('c.fullname', 'asc')
+            ->get();
+
+        // Also check if other clients had payments under this area in this week
+        $clientIdsFromPayments = DB::table('clients_payments')
+            ->whereIn('client_area', $matchedAreaIds)
+            ->whereBetween('due_date', [$fromFormatted, $toFormatted])
+            ->pluck('client_id')
+            ->toArray();
+
+        $allClientIds = array_unique(array_merge(
+            $clients->pluck('id')->toArray(),
+            $clientIdsFromPayments
+        ));
+
+        $allClients = DB::table('clients')
+            ->whereIn('id', $allClientIds)
+            ->orderBy('fullname', 'asc')
+            ->get();
+
+        // Fetch latest active/current loans for these clients
+        $loans = DB::table('clients_loans')
+            ->whereIn('client_id', $allClientIds)
+            ->orderBy('id', 'desc')
+            ->get()
+            ->groupBy('client_id');
+
+        // Fetch payments for these clients in the date range
+        $payments = DB::table('clients_payments')
+            ->whereIn('client_id', $allClientIds)
+            ->whereIn('client_area', $matchedAreaIds)
+            ->whereBetween('due_date', [$fromFormatted, $toFormatted])
+            ->get();
+
+        // Index payments by client_id and due_date (Y-m-d)
+        $paymentMap = [];
+        foreach ($payments as $p) {
+            $dKey = \Carbon\Carbon::parse($p->due_date)->format('Y-m-d');
+            $cId = $p->client_id;
+            $col = (float)($p->collection ?? 0);
+
+            if (!isset($paymentMap[$cId][$dKey])) {
+                $paymentMap[$cId][$dKey] = 0;
+            }
+            if ($col > 0) {
+                $paymentMap[$cId][$dKey] += $col;
+            }
+        }
+
+        // Compute daily totals and client row data
+        $dailyTotals = [];
+        foreach ($dates as $d) {
+            $dailyTotals[$d] = 0;
+        }
+
+        $reportRows = [];
+        foreach ($allClients as $c) {
+            $clientPayments = [];
+            $totalPaidThisWeek = 0;
+
+            foreach ($dates as $d) {
+                $colAmt = $paymentMap[$c->id][$d] ?? null;
+                if ($colAmt !== null && $colAmt > 0) {
+                    $clientPayments[$d] = $colAmt;
+                    $dailyTotals[$d] += $colAmt;
+                    $totalPaidThisWeek += $colAmt;
+                } else {
+                    $clientPayments[$d] = null; // No payment
+                }
+            }
+
+            $latestLoan = $loans[$c->id]->first() ?? null;
+            $displayName = $c->fullname;
+            if ($latestLoan && !empty($latestLoan->pn_number) && !str_contains($c->fullname, '(')) {
+                $displayName = $c->fullname . ' (' . $latestLoan->pn_number . ')';
+            }
+
+            $reportRows[] = (object)[
+                'client_id' => $c->id,
+                'fullname' => $displayName,
+                'has_zero_payment' => ($totalPaidThisWeek <= 0),
+                'payments' => $clientPayments,
+                'total_paid' => $totalPaidThisWeek,
+            ];
+        }
+
+        // Sort report rows alphabetically by fullname
+        usort($reportRows, function ($a, $b) {
+            return strcasecmp($a->fullname, $b->fullname);
+        });
+
+        $grandTotal = array_sum($dailyTotals);
+
+        return view('admin.areas.print.weekly_collection_report', compact(
+            'areas_name',
+            'location_name',
+            'id',
+            'fromFormatted',
+            'toFormatted',
+            'dates',
+            'reportRows',
+            'dailyTotals',
+            'grandTotal'
+        ));
+    }
 }

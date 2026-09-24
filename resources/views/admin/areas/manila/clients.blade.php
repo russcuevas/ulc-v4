@@ -106,13 +106,23 @@
                                         <h3 class="card-title">{{ $areas_name }}</h3>
 
 
-                                        <button class="btn btn-success btn-sm px-3" data-toggle="modal"
-                                            data-target="#addClientModal">
-                                            <i class="fas fa-user-plus"></i> Add Client
-                                        </button>
+                                        <div class="d-flex align-items-center">
+                                            <button class="btn btn-primary btn-sm px-3 mr-2" data-toggle="modal"
+                                                data-target="#weeklyCollectionReportModal">
+                                                <i class="fas fa-calendar-week"></i> Weekly Collection Report
+                                            </button>
+
+                                            <button class="btn btn-success btn-sm px-3" data-toggle="modal"
+                                                data-target="#addClientModal">
+                                                <i class="fas fa-user-plus"></i> Add Client
+                                            </button>
+                                        </div>
 
                                     </div>
                                 </div>
+
+                                {{-- weekly collection report modal --}}
+                                @include('admin.areas.manila.modals.weekly_collection_report')
 
                                 {{-- add client modal --}}
                                 @include('admin.areas.manila.modals.add_client')

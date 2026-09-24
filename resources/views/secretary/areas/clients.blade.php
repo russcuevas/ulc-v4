@@ -97,14 +97,24 @@
 
                                 <h3 class="card-title">{{ $areas_name }}</h3>
 
-                                {{-- OPTIONAL: Remove if secretary cannot add --}}
-                                <button class="btn btn-success btn-sm px-3" data-toggle="modal"
-                                    data-target="#addClientModal">
-                                    <i class="fas fa-user-plus"></i> Add Client
-                                </button>
+                                <div class="d-flex align-items-center">
+                                    <button class="btn btn-primary btn-sm px-3 mr-2" data-toggle="modal"
+                                        data-target="#weeklyCollectionReportModal">
+                                        <i class="fas fa-calendar-week"></i> Weekly Collection Report
+                                    </button>
+
+                                    {{-- OPTIONAL: Remove if secretary cannot add --}}
+                                    <button class="btn btn-success btn-sm px-3" data-toggle="modal"
+                                        data-target="#addClientModal">
+                                        <i class="fas fa-user-plus"></i> Add Client
+                                    </button>
+                                </div>
 
                             </div>
                         </div>
+
+                        {{-- weekly collection report modal --}}
+                        @include('secretary.areas.modals.weekly_collection_report')
 
                         {{-- OPTIONAL: include if you want add client --}}
                         @include('secretary.areas.modals.add_client')

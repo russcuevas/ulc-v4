@@ -123,6 +123,9 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
     Route::get('/areas/clients/{id}/print-summary-loan', [AdminManilaClientsController::class, 'AdminPrintSummaryLoan'])
         ->name('admin.area.clients.print_summary_loan');
 
+    Route::get('/areas/clients/{id}/weekly-collection-report', [AdminManilaClientsController::class, 'AdminWeeklyCollectionReport'])
+        ->name('admin.areas.weekly.collection.report');
+
     Route::put('/areas/clients/{id}/update', [AdminManilaClientsController::class, 'AdminManilaUpdateClientRequest'])
         ->name('admin.area.clients.update');
 
@@ -220,6 +223,9 @@ Route::middleware('role:secretary')->prefix('secretary')->name('secretary.')->gr
     // PRINT SUMMARY LOAN
     Route::get('/areas/clients/{id}/print-summary-loan', [SecretaryClientsController::class, 'SecretaryPrintSummaryLoan'])
         ->name('area.clients.print_summary_loan');
+
+    Route::get('/areas/clients/{id}/weekly-collection-report', [SecretaryClientsController::class, 'SecretaryWeeklyCollectionReport'])
+        ->name('area.clients.weekly.collection.report');
 
     Route::put('/areas/clients/{id}/update', [SecretaryClientsController::class, 'SecretaryUpdateClientRequest'])
         ->name('area.clients.update');
