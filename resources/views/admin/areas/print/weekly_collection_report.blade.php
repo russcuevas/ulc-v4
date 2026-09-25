@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $areas_name }} - Weekly Collection Report</title>
+    <title>{{ $areas_name }} - Weekly Collection Report {{ ($typeFilter ?? 'all') === 'lapsed' ? '(Lapsed Accounts)' : (($typeFilter ?? 'all') === 'active' ? '(Active Clients)' : '') }}</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -210,6 +210,12 @@
             <form action="" method="GET" class="d-flex align-items-center gap-2 m-0">
                 <input type="hidden" name="from" value="{{ $fromFormatted }}">
                 <input type="hidden" name="to" value="{{ $toFormatted }}">
+                <label class="form-label mb-0 fw-semibold text-nowrap">Filter:</label>
+                <select name="type" class="form-select form-select-sm" onchange="this.form.submit()" style="width: auto;">
+                    <option value="all" {{ ($typeFilter ?? 'all') === 'all' ? 'selected' : '' }}>All Clients</option>
+                    <option value="active" {{ ($typeFilter ?? 'all') === 'active' ? 'selected' : '' }}>Active Clients</option>
+                    <option value="lapsed" {{ ($typeFilter ?? 'all') === 'lapsed' ? 'selected' : '' }}>Lapsed Account</option>
+                </select>
             </form>
             <button onclick="window.print()" class="btn btn-primary btn-sm px-3">
                 <i class="fas fa-print mr-1"></i> Print Report
@@ -222,6 +228,14 @@
             <h1 class="area-title">{{ $areas_name }}</h1>
             <div class="date-range-subtitle">
                 From: {{ \Carbon\Carbon::parse($fromFormatted)->format('n/d/Y') }} To: {{ \Carbon\Carbon::parse($toFormatted)->format('n/d/Y') }}
+                &bull;
+                @if (($typeFilter ?? 'all') === 'active')
+                    <strong>Filter: Active Clients</strong>
+                @elseif (($typeFilter ?? 'all') === 'lapsed')
+                    <strong class="text-danger">Filter: Lapsed Account</strong>
+                @else
+                    <strong>Filter: All Clients</strong>
+                @endif
             </div>
         </div>
 
@@ -254,7 +268,7 @@
                 @empty
                     <tr>
                         <td colspan="{{ count($dates) + 1 }}" class="text-center py-3 text-muted">
-                            No clients found for this area.
+                            No {{ ($typeFilter ?? 'all') === 'lapsed' ? 'lapsed account' : (($typeFilter ?? 'all') === 'active' ? 'active clients' : 'clients') }} found for this area.
                         </td>
                     </tr>
                 @endforelse

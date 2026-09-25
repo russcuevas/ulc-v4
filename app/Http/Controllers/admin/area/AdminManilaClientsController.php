@@ -550,6 +550,7 @@ class AdminManilaClientsController extends Controller
         // Determine Date Range
         $fromInput = $request->query('from');
         $toInput = $request->query('to');
+        $typeFilter = $request->query('type', 'all');
 
         if ($fromInput && $toInput) {
             $startDate = \Carbon\Carbon::parse($fromInput, 'Asia/Manila')->startOfDay();
@@ -627,6 +628,7 @@ class AdminManilaClientsController extends Controller
 
         // Index payments by client_id and due_date (Y-m-d)
         $paymentMap = [];
+        $clientLapsedPayments = [];
         foreach ($payments as $p) {
             $dKey = \Carbon\Carbon::parse($p->due_date)->format('Y-m-d');
             $cId = $p->client_id;
@@ -638,6 +640,9 @@ class AdminManilaClientsController extends Controller
             if ($col > 0) {
                 $paymentMap[$cId][$dKey] += $col;
             }
+            if (!empty($p->is_lapsed)) {
+                $clientLapsedPayments[$cId] = true;
+            }
         }
 
         // Compute daily totals and client row data
@@ -647,6 +652,8 @@ class AdminManilaClientsController extends Controller
         }
 
         $reportRows = [];
+        $compareDate = $endDate->copy()->startOfDay();
+
         foreach ($allClients as $c) {
             $clientPayments = [];
             $totalPaidThisWeek = 0;
@@ -655,7 +662,6 @@ class AdminManilaClientsController extends Controller
                 $colAmt = $paymentMap[$c->id][$d] ?? null;
                 if ($colAmt !== null && $colAmt > 0) {
                     $clientPayments[$d] = $colAmt;
-                    $dailyTotals[$d] += $colAmt;
                     $totalPaidThisWeek += $colAmt;
                 } else {
                     $clientPayments[$d] = null; // No payment
@@ -663,6 +669,29 @@ class AdminManilaClientsController extends Controller
             }
 
             $latestLoan = $loans[$c->id]->first() ?? null;
+            $balance = (float)($latestLoan->balance ?? 0);
+            $hasBalance = ($balance > 0);
+            $loanEnd = !empty($latestLoan->loan_to) ? \Carbon\Carbon::parse($latestLoan->loan_to)->startOfDay() : null;
+
+            // Determine if lapsed or active
+            $isLapsed = ($hasBalance && $loanEnd && $compareDate->gt($loanEnd)) || (!empty($clientLapsedPayments[$c->id]) && $hasBalance);
+            $isActive = (!$isLapsed) && ($hasBalance || $totalPaidThisWeek > 0);
+
+            // Filter by type
+            if ($typeFilter === 'active' && !$isActive) {
+                continue;
+            }
+            if ($typeFilter === 'lapsed' && !$isLapsed) {
+                continue;
+            }
+
+            // Sum into daily totals only for the filtered clients
+            foreach ($dates as $d) {
+                if (!empty($clientPayments[$d])) {
+                    $dailyTotals[$d] += $clientPayments[$d];
+                }
+            }
+
             $displayName = $c->fullname;
             if ($latestLoan && !empty($latestLoan->pn_number) && !str_contains($c->fullname, '(')) {
                 $displayName = $c->fullname . ' (' . $latestLoan->pn_number . ')';
@@ -674,6 +703,7 @@ class AdminManilaClientsController extends Controller
                 'has_zero_payment' => ($totalPaidThisWeek <= 0),
                 'payments' => $clientPayments,
                 'total_paid' => $totalPaidThisWeek,
+                'is_lapsed' => $isLapsed,
             ];
         }
 
@@ -693,7 +723,8 @@ class AdminManilaClientsController extends Controller
             'dates',
             'reportRows',
             'dailyTotals',
-            'grandTotal'
+            'grandTotal',
+            'typeFilter'
         ));
     }
 }

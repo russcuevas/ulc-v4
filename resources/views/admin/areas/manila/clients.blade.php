@@ -107,10 +107,26 @@
 
 
                                         <div class="d-flex align-items-center">
-                                            <button class="btn btn-primary btn-sm px-3 mr-2" data-toggle="modal"
-                                                data-target="#weeklyCollectionReportModal">
-                                                <i class="fas fa-calendar-week"></i> Weekly Collection Report
-                                            </button>
+                                            <div class="btn-group mr-2">
+                                                <button type="button" class="btn btn-primary btn-sm px-3 open-weekly-report-modal" data-type="all">
+                                                    <i class="fas fa-calendar-week mr-1"></i> Weekly Collection Report
+                                                </button>
+                                                <button type="button" class="btn btn-primary btn-sm dropdown-toggle dropdown-toggle-split"
+                                                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                    <span class="sr-only">Toggle Dropdown</span>
+                                                </button>
+                                                <div class="dropdown-menu dropdown-menu-right">
+                                                    <a class="dropdown-item open-weekly-report-modal" href="javascript:void(0)" data-type="all">
+                                                        <i class="fas fa-users text-primary mr-2"></i> All Clients
+                                                    </a>
+                                                    <a class="dropdown-item open-weekly-report-modal" href="javascript:void(0)" data-type="active">
+                                                        <i class="fas fa-user-check text-success mr-2"></i> Active Clients
+                                                    </a>
+                                                    <a class="dropdown-item open-weekly-report-modal" href="javascript:void(0)" data-type="lapsed">
+                                                        <i class="fas fa-user-clock text-danger mr-2"></i> Lapsed Account
+                                                    </a>
+                                                </div>
+                                            </div>
 
                                             <button class="btn btn-success btn-sm px-3" data-toggle="modal"
                                                 data-target="#addClientModal">
@@ -387,6 +403,13 @@
                     document.getElementById('delete-form-' + clientId).submit();
                 }
             });
+        });
+
+        $(document).on('click', '.open-weekly-report-modal', function(e) {
+            e.preventDefault();
+            var filterType = $(this).data('type') || 'all';
+            $('#weeklyCollectionReportModal .weekly-report-type-select').val(filterType);
+            $('#weeklyCollectionReportModal').modal('show');
         });
     </script>
 </body>

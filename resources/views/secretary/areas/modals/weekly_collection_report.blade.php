@@ -28,8 +28,17 @@
                                    value="{{ \Carbon\Carbon::now('Asia/Manila')->endOfWeek()->format('Y-m-d') }}" required>
                         </div>
                     </div>
+
+                    <div class="form-group">
+                        <label class="font-weight-bold">Client Filter / Type:</label>
+                        <select name="type" class="form-control weekly-report-type-select">
+                            <option value="all">All Clients</option>
+                            <option value="active">Active Clients</option>
+                            <option value="lapsed">Lapsed Account</option>
+                        </select>
+                    </div>
                     <small class="text-muted">
-                        <i class="fas fa-info-circle"></i> Generates a weekly matrix report for all clients in this area. Unpaid days will be highlighted in red.
+                        <i class="fas fa-info-circle"></i> Generates a weekly matrix report for the selected clients in this area. Unpaid days will be highlighted in red.
                     </small>
                 </div>
                 <div class="modal-footer">
