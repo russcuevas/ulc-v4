@@ -279,9 +279,6 @@
                                             </thead>
                                             <tbody>
                                                 @foreach ($paymentsGrid as $item)
-                                                    @if ($item->index > 100)
-                                                        @continue
-                                                    @endif
                                                     @php
                                                         $dueDate = \Carbon\Carbon::parse($item->date);
                                                     @endphp

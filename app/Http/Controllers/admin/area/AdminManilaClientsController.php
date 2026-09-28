@@ -440,13 +440,35 @@ class AdminManilaClientsController extends Controller
             ->get()
             ->keyBy('due_date');
 
-        // Generate date list from loan_from to loan_to
+        // Generate date list from loan_from to loan_to (term schedule)
         $startDate = \Carbon\Carbon::parse($loan->loan_from);
-        $endDate = \Carbon\Carbon::parse($loan->loan_to);
+        $termEndDate = \Carbon\Carbon::parse($loan->loan_to);
+        $today = \Carbon\Carbon::now('Asia/Manila')->startOfDay();
+
+        // Find latest payment date beyond termEndDate if any
+        $latestPaymentDate = $termEndDate->copy();
+        foreach ($payments as $dueDate => $payment) {
+            $pDate = \Carbon\Carbon::parse($dueDate)->startOfDay();
+            if ($pDate->gt($latestPaymentDate)) {
+                $latestPaymentDate = $pDate;
+            }
+        }
+
+        // Continuous extension:
+        // If loan still has remaining balance (> 0), extend up to today (or latest payment date if in future)
+        // If loan is fully paid (balance <= 0), extend only up to the latest payment date (or loan_to)
+        if ((float)($loan->balance ?? 0) > 0) {
+            $maxEndDate = $today->gt($latestPaymentDate) ? $today->copy() : $latestPaymentDate->copy();
+            if ($termEndDate->gt($maxEndDate)) {
+                $maxEndDate = $termEndDate->copy();
+            }
+        } else {
+            $maxEndDate = $latestPaymentDate->gt($termEndDate) ? $latestPaymentDate->copy() : $termEndDate->copy();
+        }
 
         $dateList = [];
         $tempDate = $startDate->copy();
-        while ($tempDate->lte($endDate)) {
+        while ($tempDate->lte($maxEndDate)) {
             $dateList[] = $tempDate->format('Y-m-d');
             $tempDate->addDay();
         }
@@ -466,6 +488,9 @@ class AdminManilaClientsController extends Controller
         // Compute grids with pre-generated reference numbers
         $runningPayment = 0;
         $paymentsGrid = [];
+        $totalLoanAmount = (float) $loan->loan_amount;
+        $dailyRate = (float) ($loan->daily ?? 0);
+        $loanTerms = (int) ($loan->loan_terms ?? 100);
 
         foreach ($dateList as $index => $dateStr) {
             $payment = $payments->get($dateStr) ?? null;
@@ -476,12 +501,18 @@ class AdminManilaClientsController extends Controller
                 $runningPayment += $collectionVal;
             }
 
-            $outstandingBalance = max(0, $loan->loan_amount - $runningPayment);
+            $outstandingBalance = max(0, $totalLoanAmount - $runningPayment);
 
-            $dueDate = \Carbon\Carbon::parse($dateStr);
-            $loanStart = \Carbon\Carbon::parse($loan->loan_from);
+            $dueDate = \Carbon\Carbon::parse($dateStr)->startOfDay();
+            $loanStart = \Carbon\Carbon::parse($loan->loan_from)->startOfDay();
             $days = $dueDate->lessThan($loanStart) ? 0 : $loanStart->diffInDays($dueDate, false) + 1;
-            $balanceShouldBe = max(0, $loan->loan_amount - $days * ($loan->daily ?? 0));
+            
+            // If within term schedule (e.g. 100 days), compute expected balance; otherwise it is 0 (lapsed)
+            if ($days <= $loanTerms && $dueDate->lte($termEndDate)) {
+                $balanceShouldBe = max(0, $totalLoanAmount - ($days * $dailyRate));
+            } else {
+                $balanceShouldBe = 0;
+            }
 
             $dailyOd = max(0, $outstandingBalance - $balanceShouldBe);
 
@@ -515,8 +546,6 @@ class AdminManilaClientsController extends Controller
                 'reference_number' => $refNo
             ];
         }
-
-        $paymentsGrid = array_slice($paymentsGrid, 0, 100);
 
         return view('admin.areas.manila.backlog_collections', compact(
             'loan',
