@@ -107,14 +107,18 @@
                                             <span class="sr-only">Toggle Dropdown</span>
                                         </button>
                                         <div class="dropdown-menu dropdown-menu-right">
-                                            <a class="dropdown-item open-weekly-report-modal" href="javascript:void(0)" data-type="all">
-                                                <i class="fas fa-users text-primary mr-2"></i> All Clients
+                                            <a class="dropdown-item open-weekly-report-modal" href="javascript:void(0)" data-type="all" data-mode="detailed">
+                                                <i class="fas fa-users text-primary mr-2"></i> All Clients (Detailed)
                                             </a>
-                                            <a class="dropdown-item open-weekly-report-modal" href="javascript:void(0)" data-type="active">
+                                            <a class="dropdown-item open-weekly-report-modal" href="javascript:void(0)" data-type="active" data-mode="detailed">
                                                 <i class="fas fa-user-check text-success mr-2"></i> Active Clients
                                             </a>
-                                            <a class="dropdown-item open-weekly-report-modal" href="javascript:void(0)" data-type="lapsed">
+                                            <a class="dropdown-item open-weekly-report-modal" href="javascript:void(0)" data-type="lapsed" data-mode="detailed">
                                                 <i class="fas fa-user-clock text-danger mr-2"></i> Lapsed Account
+                                            </a>
+                                            <div class="dropdown-divider"></div>
+                                            <a class="dropdown-item open-weekly-report-modal" href="javascript:void(0)" data-type="all" data-mode="summary">
+                                                <i class="fas fa-chart-pie text-info mr-2"></i> Report Summary Collection (Totals Only)
                                             </a>
                                         </div>
                                     </div>
@@ -261,7 +265,9 @@
             $(document).on('click', '.open-weekly-report-modal', function(e) {
                 e.preventDefault();
                 var filterType = $(this).data('type') || 'all';
+                var reportMode = $(this).data('mode') || 'detailed';
                 $('#weeklyCollectionReportModal .weekly-report-type-select').val(filterType);
+                $('#weeklyCollectionReportModal .weekly-report-mode-select').val(reportMode);
                 $('#weeklyCollectionReportModal').modal('show');
             });
         });

@@ -29,16 +29,25 @@
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label class="font-weight-bold">Client Filter / Type:</label>
-                        <select name="type" class="form-control weekly-report-type-select">
-                            <option value="all">All Clients</option>
-                            <option value="active">Active Clients</option>
-                            <option value="lapsed">Lapsed Account</option>
-                        </select>
+                    <div class="row">
+                        <div class="col-md-6 form-group">
+                            <label class="font-weight-bold">Report Format / Mode:</label>
+                            <select name="mode" class="form-control weekly-report-mode-select">
+                                <option value="detailed">Detailed (With Clients & Totals)</option>
+                                <option value="summary">Summary Only (Daily Totals Only)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 form-group">
+                            <label class="font-weight-bold">Client Filter / Type:</label>
+                            <select name="type" class="form-control weekly-report-type-select">
+                                <option value="all">All Clients</option>
+                                <option value="active">Active Clients</option>
+                                <option value="lapsed">Lapsed Account</option>
+                            </select>
+                        </div>
                     </div>
                     <small class="text-muted">
-                        <i class="fas fa-info-circle"></i> Generates a weekly matrix report for the selected clients in this area. Unpaid days will be highlighted in red.
+                        <i class="fas fa-info-circle"></i> <strong>Detailed</strong> shows client breakdown with daily totals. <strong>Summary Only</strong> displays only total collection per day.
                     </small>
                 </div>
                 <div class="modal-footer">

@@ -666,6 +666,25 @@ class SecretaryClientsController extends Controller
             return strcasecmp($a->fullname, $b->fullname);
         });
 
+        // Compute paying client counts per date
+        $dailyPayingCounts = [];
+        foreach ($dates as $d) {
+            $dailyPayingCounts[$d] = 0;
+            foreach ($reportRows as $row) {
+                if (!empty($row->payments[$d]) && $row->payments[$d] > 0) {
+                    $dailyPayingCounts[$d]++;
+                }
+            }
+        }
+
+        $totalPayingClients = 0;
+        foreach ($reportRows as $row) {
+            if ($row->total_paid > 0) {
+                $totalPayingClients++;
+            }
+        }
+
+        $reportMode = $request->query('mode', 'detailed');
         $grandTotal = array_sum($dailyTotals);
 
         return view('admin.areas.print.weekly_collection_report', compact(
@@ -677,8 +696,11 @@ class SecretaryClientsController extends Controller
             'dates',
             'reportRows',
             'dailyTotals',
+            'dailyPayingCounts',
+            'totalPayingClients',
             'grandTotal',
-            'typeFilter'
+            'typeFilter',
+            'reportMode'
         ));
     }
 }
