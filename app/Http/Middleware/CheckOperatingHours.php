@@ -29,9 +29,8 @@ class CheckOperatingHours
             return $next($request);
         }
 
-        // Bypasses: halimbawa kung admin ang naka-login at kailangan mag-maintain ng system
-        // Tanggalin o i-comment ito kung nais na pati admin ay ma-shutdown.
-        if (env('OPERATING_HOURS_ADMIN_BYPASS', true) && Session::get('role') === 'admin') {
+        // Bypasses: Hindi sakop ang Admin at mga Admin routes sa operating hours lock (24/7 accessible)
+        if (Session::get('role') === 'admin' || $request->is('admin', 'admin/*')) {
             return $next($request);
         }
 
