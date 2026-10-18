@@ -401,7 +401,9 @@
 
                                             {{-- Collection --}}
                                             <td class="collection-cell">
-                                                @if ($client->payment && !is_null($client->payment->collection))
+                                                @if ($client->payment && ($client->payment->type === 'NO PAYMENT' || (isset($client->payment->collection) && $client->payment->collection == 0)))
+                                                    0
+                                                @elseif ($client->payment && !is_null($client->payment->collection))
                                                     ₱{{ number_format($client->payment->collection, 2) }}
                                                 @else
                                                     -
@@ -466,6 +468,16 @@
                                                         {{-- blank status --}}
                                                     @elseif ($type === 'NO PAYMENT')
                                                         <span class="badge badge-danger">No Payment</span>
+                                                        @if (!empty($client->payment->image) || !empty($client->payment->remarks))
+                                                            <div class="mt-1">
+                                                                <button type="button" class="btn btn-xs btn-outline-danger view-proof-btn"
+                                                                    data-client-name="{{ $client->fullname }}"
+                                                                    data-image="{{ !empty($client->payment->image) ? asset($client->payment->image) : '' }}"
+                                                                    data-remarks="{{ $client->payment->remarks ?? '' }}">
+                                                                    <i class="fas fa-image mr-1"></i> View Proof
+                                                                </button>
+                                                            </div>
+                                                        @endif
                                                     @elseif ($client->payment->is_collected == 1)
                                                         <span class="badge badge-success">Collected</span>
                                                     @elseif (!is_null($col) && $col > 0 && $client->payment->is_collected == 0)
@@ -1086,6 +1098,31 @@
                     } else if (result.isDenied) {
                         window.open(baseUrl + '?type=lapsed', '_blank');
                     }
+                });
+            });
+
+            $(document).on('click', '.view-proof-btn', function() {
+                let client = $(this).data('client-name');
+                let image = $(this).data('image');
+                let remarks = $(this).data('remarks');
+
+                let html = '';
+                if (remarks) {
+                    html += '<div class="text-left mb-3"><label class="font-weight-bold mb-1">Remarks:</label><div class="p-2 bg-light border rounded">' + $('<div>').text(remarks).html() + '</div></div>';
+                }
+                if (image) {
+                    html += '<div class="text-center mb-2"><img src="' + image + '" class="img-fluid rounded border shadow-sm" style="max-height: 350px;"></div>';
+                    html += '<div><a href="' + image + '" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fas fa-external-link-alt mr-1"></i> Open Full Image</a></div>';
+                } else {
+                    html += '<p class="text-muted">No proof image attached.</p>';
+                }
+
+                Swal.fire({
+                    title: 'Proof of No Payment - ' + client,
+                    html: html,
+                    showCloseButton: true,
+                    showConfirmButton: false,
+                    width: '600px'
                 });
             });
         });

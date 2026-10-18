@@ -34,10 +34,10 @@ class AdminCollectionController extends Controller
             ->select(
                 'cp.reference_number',
                 'cp.due_date',
-                'cp.collected_by',
-                'col.fullname as collected_by_name'
+                DB::raw('COALESCE(NULLIF(MAX(cp.collected_by), ""), MIN(cp.collected_by)) as collected_by'),
+                DB::raw('GROUP_CONCAT(DISTINCT col.fullname SEPARATOR ", ") as collected_by_name')
             )
-            ->groupBy('cp.reference_number', 'cp.due_date', 'cp.collected_by', 'col.fullname')
+            ->groupBy('cp.reference_number', 'cp.due_date')
             ->orderBy('cp.due_date', 'desc')
             ->get();
 
@@ -307,7 +307,12 @@ class AdminCollectionController extends Controller
             ->pluck('id')
             ->toArray();
 
-        $collector = $area->collector_id ?? null;
+        $existingCollector = DB::table('clients_payments')
+            ->where('reference_number', $refNo)
+            ->whereNotNull('collected_by')
+            ->value('collected_by');
+
+        $collector = $existingCollector ?: ($area->collector_id ?? null);
 
         $collectorName = DB::table('collectors')->where('id', $collector)->value('fullname') ?? 'Collector';
 

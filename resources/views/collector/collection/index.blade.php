@@ -152,6 +152,8 @@
 
                                 {{-- add collectibles modal --}}
                                 @include('collector.collection.modals.select_date')
+                                @include('collector.collection.modals.no_payment')
+                                @include('collector.collection.modals.view_proof')
                                 <div class="card-body">
                                     <div class="row g-3 mb-4">
                                         <div class="col-12 mb-3">
@@ -282,6 +284,8 @@
                                                         data-client-id="{{ $client->id }}"
                                                         data-loan-id="{{ $client->loan->id ?? '' }}"
                                                         data-area-id="{{ $client->area_id }}"
+                                                        data-client-name="{{ $client->fullname }}"
+                                                        data-balance="{{ $client->loan->balance ?? 0 }}"
                                                         data-daily="{{ $client->loan->daily ?? 0 }}">
                                                         <td>{{ $client->fullname }}</td>
 
@@ -312,7 +316,7 @@
                                                         {{-- Collection --}}
                                                         @if ($client->payment && !(is_null($client->payment->collection) && is_null($client->payment->type)))
                                                             <td>
-                                                                @if (is_null($client->payment->collection))
+                                                                @if (is_null($client->payment->collection) || $client->payment->collection == 0 || $client->payment->type === 'NO PAYMENT')
                                                                     0
                                                                 @else
                                                                     ₱{{ number_format($client->payment->collection, 2) }}
@@ -335,6 +339,16 @@
                                                                     <span class="badge badge-primary">Paid Loan</span>
                                                                 @elseif ($client->payment->type === 'NO PAYMENT' || $client->payment->collection == 0)
                                                                     <span class="badge badge-danger">NO PAYMENT</span>
+                                                                    @if (!empty($client->payment->image) || !empty($client->payment->remarks))
+                                                                        <div class="mt-1">
+                                                                            <button type="button" class="btn btn-xs btn-outline-danger view-proof-btn"
+                                                                                data-client-name="{{ $client->fullname }}"
+                                                                                data-image="{{ !empty($client->payment->image) ? asset($client->payment->image) : '' }}"
+                                                                                data-remarks="{{ $client->payment->remarks ?? '' }}">
+                                                                                <i class="fas fa-image mr-1"></i> View Proof
+                                                                            </button>
+                                                                        </div>
+                                                                    @endif
                                                                 @elseif ($client->payment->is_collected == 1)
                                                                     <span class="badge badge-success">Collected</span>
                                                                 @else
@@ -345,19 +359,13 @@
                                                             <td>
                                                                 <form
                                                                     action="{{ route('collector.collections.store') }}"
-                                                                    method="POST">
+                                                                    method="POST"
+                                                                    enctype="multipart/form-data">
                                                                     @csrf
                                                                     <input type="number" step="0.01"
                                                                         name="collection" class="form-control"
                                                                         min="1"
                                                                         placeholder="Enter amount if any">
-
-                                                                    <!-- Helper text -->
-                                                                    <small class="form-text"
-                                                                        style="color: brown">Leave
-                                                                        blank if no
-                                                                        payment.</small>
-
                                                             </td>
 
                                                             @if (stripos($area->location_name ?? '', 'Financial Counselor') !== false)
@@ -370,17 +378,18 @@
                                                             @endif
 
                                                             <td>
-                                                                <select name="type" class="form-control" required>
+                                                                <select name="type" class="form-control collection-type-select" required>
                                                                     <option value="">Select</option>
                                                                     <option value="CASH">CASH</option>
                                                                     <option value="GCASH">GCASH</option>
                                                                     <option value="CHEQUE">CHEQUE</option>
                                                                     <option value="BANK TRANSFER">BANK TRANSFER</option>
+                                                                    <option value="NO PAYMENT">NO PAYMENT</option>
                                                                 </select>
                                                             </td>
 
                                                             <td>
-                                                                <button type="submit" class="btn btn-success btn-sm">
+                                                                <button type="submit" class="btn btn-success btn-sm btn-save-row">
                                                                     Save collection
                                                                 </button>
 
@@ -584,17 +593,279 @@
                 updateBulkTotal();
             });
 
+            let currentActiveNoPaymentRow = null;
+            let isSubmittingNoPayment = false;
+
+            function openNoPaymentModal(tr) {
+                currentActiveNoPaymentRow = tr;
+                const clientId = tr.data('client-id');
+                const loanId = tr.data('loan-id');
+                const areaId = tr.data('area-id');
+                const clientName = tr.data('client-name');
+                const daily = tr.data('daily');
+                const balance = tr.data('balance');
+
+                $('#np_modal_client_name').text(clientName || '-');
+                $('#np_modal_daily').text('₱' + parseFloat(daily || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                $('#np_modal_balance').text('₱' + parseFloat(balance || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+
+                $('#np_client_id').val(clientId);
+                $('#np_loan_id').val(loanId);
+                $('#np_area_id').val(areaId);
+                $('#np_daily').val(daily);
+                $('#np_old_balance').val(balance);
+
+                // Reset modal inputs
+                $('#np_image').val('');
+                $('#np_image_label').text('Take photo or choose image...');
+                $('#np_remarks').val('');
+                $('#np_preview_container').hide();
+                $('#np_preview_img').attr('src', '');
+                $('#npSubmitBtn').prop('disabled', false).html('<i class="fas fa-save mr-1"></i> Save Collection');
+                isSubmittingNoPayment = false;
+
+                $('#noPaymentModal').modal('show');
+            }
+
+            // Helper function to format bytes
+            function formatBytes(bytes) {
+                if (!bytes || bytes === 0) return '0 B';
+                const k = 1024;
+                const sizes = ['B', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return (bytes / Math.pow(k, i)).toFixed(1) + ' ' + sizes[i];
+            }
+
+            // Client-side image compression using HTML5 Canvas
+            function compressImageFile(file, maxDimension, quality, callback) {
+                if (!file || !file.type.startsWith('image/')) {
+                    callback(file, null, null);
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = function() {
+                        let width = img.width;
+                        let height = img.height;
+
+                        // Downscale dimensions if larger than maxDimension
+                        if (width > maxDimension || height > maxDimension) {
+                            if (width > height) {
+                                height = Math.round((height * maxDimension) / width);
+                                width = maxDimension;
+                            } else {
+                                width = Math.round((width * maxDimension) / height);
+                                height = maxDimension;
+                            }
+                        }
+
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        
+                        // Fill white background in case of transparent PNG converted to JPEG
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.fillRect(0, 0, width, height);
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        canvas.toBlob(function(blob) {
+                            if (!blob) {
+                                callback(file, file.size, file.size);
+                                return;
+                            }
+
+                            // If compressed blob is smaller than original, use it
+                            if (blob.size < file.size) {
+                                const newName = file.name.replace(/\.[^/.]+$/, "") + ".jpg";
+                                const compressedFile = new File([blob], newName, {
+                                    type: 'image/jpeg',
+                                    lastModified: Date.now()
+                                });
+                                callback(compressedFile, file.size, compressedFile.size);
+                            } else {
+                                callback(file, file.size, file.size);
+                            }
+                        }, 'image/jpeg', quality);
+                    };
+                    img.onerror = function() {
+                        callback(file, file.size, file.size);
+                    };
+                };
+                reader.onerror = function() {
+                    callback(file, file.size, file.size);
+                };
+            }
+
+            // Image file selection, instant preview & automatic compression
+            $('#np_image').on('change', function(e) {
+                const file = this.files[0];
+                if (file) {
+                    if (!file.type.startsWith('image/')) {
+                        notyf.error('Please select a valid image file.');
+                        $(this).val('');
+                        $('#np_image_label').text('Take photo or choose image...');
+                        $('#np_preview_container').hide();
+                        $('#np_compression_info').hide().empty();
+                        return;
+                    }
+                    if (file.size > 20 * 1024 * 1024) {
+                        notyf.error('Image size must be less than 20MB.');
+                        $(this).val('');
+                        $('#np_image_label').text('Take photo or choose image...');
+                        $('#np_preview_container').hide();
+                        $('#np_compression_info').hide().empty();
+                        return;
+                    }
+
+                    $('#np_image_label').text(file.name);
+                    $('#np_compression_info').html('<span class="text-muted small"><i class="fas fa-spinner fa-spin mr-1"></i> Optimizing & compressing image...</span>').show();
+
+                    // Show temporary preview
+                    const tempUrl = URL.createObjectURL(file);
+                    $('#np_preview_img').attr('src', tempUrl);
+                    $('#np_preview_container').show();
+
+                    // Compress: max 1600px width/height, 0.75 JPEG quality
+                    compressImageFile(file, 1600, 0.75, function(compressedFile, origSize, newSize) {
+                        // Replace the input's file with compressed version
+                        try {
+                            const dt = new DataTransfer();
+                            dt.items.add(compressedFile);
+                            $('#np_image')[0].files = dt.files;
+                        } catch (err) {
+                            console.warn('DataTransfer API error, will upload original:', err);
+                        }
+
+                        const compressedUrl = URL.createObjectURL(compressedFile);
+                        $('#np_preview_img').attr('src', compressedUrl);
+                        $('#np_image_label').text(compressedFile.name);
+
+                        if (origSize && newSize && newSize < origSize) {
+                            const savedPct = Math.round(((origSize - newSize) / origSize) * 100);
+                            $('#np_compression_info').html(
+                                '<span class="badge badge-success p-1 font-weight-normal text-wrap" style="font-size: 11.5px;">' +
+                                '<i class="fas fa-check-circle mr-1"></i> Compressed: <strong>' + formatBytes(newSize) + '</strong> ' +
+                                '<span class="text-light">(from ' + formatBytes(origSize) + ', -' + savedPct + '%)</span>' +
+                                '</span>'
+                            ).show();
+                        } else if (newSize) {
+                            $('#np_compression_info').html(
+                                '<span class="badge badge-secondary p-1 font-weight-normal" style="font-size: 11.5px;">' +
+                                'Size: ' + formatBytes(newSize) +
+                                '</span>'
+                            ).show();
+                        }
+                    });
+                } else {
+                    $('#np_image_label').text('Take photo or choose image...');
+                    $('#np_preview_container').hide();
+                    $('#np_compression_info').hide().empty();
+                }
+            });
+
+            // Remove selected image
+            $('#np_remove_img_btn').on('click', function() {
+                $('#np_image').val('');
+                $('#np_image_label').text('Take photo or choose image...');
+                $('#np_preview_container').hide();
+                $('#np_preview_img').attr('src', '');
+                $('#np_compression_info').hide().empty();
+            });
+
+            // If modal dismissed without saving, reset dropdown
+            $('#noPaymentModal').on('hidden.bs.modal', function() {
+                if (currentActiveNoPaymentRow && !isSubmittingNoPayment) {
+                    const typeSelect = currentActiveNoPaymentRow.find('select[name="type"]');
+                    if (typeSelect.val() === 'NO PAYMENT') {
+                        typeSelect.val('');
+                        currentActiveNoPaymentRow.find('input[name="collection"]').val('').prop('readonly', false).prop('disabled', false);
+                        const savingsInput = currentActiveNoPaymentRow.find('input[name="savings"]');
+                        if (savingsInput.length) {
+                            savingsInput.val('').prop('readonly', false).prop('disabled', false);
+                        }
+                        updateBulkTotal();
+                    }
+                }
+            });
+
+            // Submit handler for No Payment Modal
+            $('#noPaymentForm').on('submit', function(e) {
+                const fileInput = $('#np_image')[0];
+                if (!fileInput.files || fileInput.files.length === 0) {
+                    e.preventDefault();
+                    notyf.error('Proof image is required when tagging as NO PAYMENT.');
+                    return false;
+                }
+                isSubmittingNoPayment = true;
+                $('#npSubmitBtn').prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...');
+            });
+
+            // Intercept row save button if NO PAYMENT is selected
+            $(document).on('click', '.btn-save-row', function(e) {
+                const tr = $(this).closest('tr');
+                const typeSelect = tr.find('select[name="type"]');
+                if (typeSelect.val() === 'NO PAYMENT') {
+                    e.preventDefault();
+                    openNoPaymentModal(tr);
+                }
+            });
+
             $(document).on('change', 'select[name="type"]', function() {
                 const tr = $(this).closest('tr');
+                const val = $(this).val();
                 const collectionInput = tr.find('input[name="collection"]');
+                const savingsInput = tr.find('input[name="savings"]');
 
-                if ($(this).val() === 'NO PAYMENT') {
+                if (val === 'NO PAYMENT') {
                     collectionInput.val('');
                     collectionInput.prop('readonly', true);
+                    if (savingsInput.length) {
+                        savingsInput.val('');
+                        savingsInput.prop('readonly', true);
+                    }
+                    openNoPaymentModal(tr);
                 } else {
                     collectionInput.prop('readonly', false);
+                    if (savingsInput.length) {
+                        savingsInput.prop('readonly', false);
+                    }
                 }
                 updateBulkTotal();
+            });
+
+            // View Proof modal click handler
+            $(document).on('click', '.view-proof-btn', function() {
+                const clientName = $(this).data('client-name');
+                const imageSrc = $(this).data('image');
+                const remarks = $(this).data('remarks');
+
+                $('#vp_client_name').text(clientName || 'N/A');
+
+                if (imageSrc && imageSrc.trim() !== '') {
+                    $('#vp_image').attr('src', imageSrc);
+                    $('#vp_image_link').attr('href', imageSrc);
+                    $('#vp_image_container').show();
+                    $('#vp_no_image').hide();
+                } else {
+                    $('#vp_image_container').hide();
+                    $('#vp_no_image').show();
+                }
+
+                if (remarks && remarks.trim() !== '') {
+                    $('#vp_remarks_text').text(remarks);
+                    $('#vp_remarks_container').show();
+                    $('#vp_no_remarks').hide();
+                } else {
+                    $('#vp_remarks_container').hide();
+                    $('#vp_no_remarks').show();
+                }
+
+                $('#viewProofModal').modal('show');
             });
 
             // Bulk Save functionality (without checkboxes)
@@ -625,6 +896,13 @@
                     notyf.error(
                         'No collections found. Please select a Payment Type for the rows you want to save.'
                     );
+                    return;
+                }
+
+                // Disallow bulk saving rows with NO PAYMENT because proof image is required
+                const noPaymentEntries = paymentsToSave.filter(p => p.type === 'NO PAYMENT');
+                if (noPaymentEntries.length > 0) {
+                    notyf.error('Clients tagged as "NO PAYMENT" require proof image and must be saved individually.');
                     return;
                 }
 

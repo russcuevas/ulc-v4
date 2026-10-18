@@ -582,6 +582,7 @@ class SecretaryClientsController extends Controller
 
         // Index payments by client_id and due_date (Y-m-d)
         $paymentMap = [];
+        $paymentDetailsMap = [];
         $clientLapsedPayments = [];
         foreach ($payments as $p) {
             $dKey = \Carbon\Carbon::parse($p->due_date)->format('Y-m-d');
@@ -597,6 +598,27 @@ class SecretaryClientsController extends Controller
             if (!empty($p->is_lapsed)) {
                 $clientLapsedPayments[$cId] = true;
             }
+
+            if (!isset($paymentDetailsMap[$cId][$dKey])) {
+                $paymentDetailsMap[$cId][$dKey] = [
+                    'amount' => $col,
+                    'type' => $p->type,
+                    'image' => !empty($p->image) ? $p->image : null,
+                    'remarks' => !empty($p->remarks) ? $p->remarks : null,
+                    'has_record' => true,
+                ];
+            } else {
+                $paymentDetailsMap[$cId][$dKey]['amount'] += $col;
+                if (!empty($p->image)) {
+                    $paymentDetailsMap[$cId][$dKey]['image'] = $p->image;
+                }
+                if (!empty($p->remarks)) {
+                    $paymentDetailsMap[$cId][$dKey]['remarks'] = $p->remarks;
+                }
+                if ($p->type === 'NO PAYMENT') {
+                    $paymentDetailsMap[$cId][$dKey]['type'] = 'NO PAYMENT';
+                }
+            }
         }
 
         // Compute daily totals and client row data
@@ -610,15 +632,34 @@ class SecretaryClientsController extends Controller
 
         foreach ($allClients as $c) {
             $clientPayments = [];
+            $clientPaymentDetails = [];
             $totalPaidThisWeek = 0;
 
             foreach ($dates as $d) {
                 $colAmt = $paymentMap[$c->id][$d] ?? null;
+                $pDetail = $paymentDetailsMap[$c->id][$d] ?? null;
+
                 if ($colAmt !== null && $colAmt > 0) {
                     $clientPayments[$d] = $colAmt;
+                    $clientPaymentDetails[$d] = [
+                        'amount' => $colAmt,
+                        'type' => $pDetail['type'] ?? 'CASH',
+                        'image' => null,
+                        'remarks' => null,
+                        'is_no_payment' => false,
+                        'has_record' => true,
+                    ];
                     $totalPaidThisWeek += $colAmt;
                 } else {
                     $clientPayments[$d] = null; // No payment
+                    $clientPaymentDetails[$d] = [
+                        'amount' => 0,
+                        'type' => $pDetail['type'] ?? 'NO PAYMENT',
+                        'image' => $pDetail['image'] ?? null,
+                        'remarks' => $pDetail['remarks'] ?? null,
+                        'is_no_payment' => true,
+                        'has_record' => isset($pDetail),
+                    ];
                 }
             }
 
@@ -656,6 +697,7 @@ class SecretaryClientsController extends Controller
                 'fullname' => $displayName,
                 'has_zero_payment' => ($totalPaidThisWeek <= 0),
                 'payments' => $clientPayments,
+                'payment_details' => $clientPaymentDetails,
                 'total_paid' => $totalPaidThisWeek,
                 'is_lapsed' => $isLapsed,
             ];

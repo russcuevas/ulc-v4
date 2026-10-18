@@ -123,8 +123,72 @@
         }
 
         .no-payment-cell {
-            background-color: #e57373 !important;
-            color: transparent;
+            background-color: #fff4f4 !important;
+            color: #212529 !important;
+            text-align: center;
+            vertical-align: middle;
+            padding: 6px 4px !important;
+            min-width: 100px;
+        }
+
+        .no-payment-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+        }
+
+        .no-payment-thumb {
+            width: 44px;
+            height: 44px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 1.5px solid #dc3545;
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+            transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+            display: inline-block;
+        }
+
+        .no-payment-thumb:hover {
+            transform: scale(1.1);
+            box-shadow: 0 3px 8px rgba(220, 53, 69, 0.35);
+        }
+
+        .no-payment-badge-no-img {
+            font-size: 9.5px;
+            font-weight: 600;
+            color: #b02a37;
+            background: #ffe3e3;
+            border: 1px dashed #f5c2c7;
+            border-radius: 3px;
+            padding: 1px 4px;
+            line-height: 1.2;
+            display: inline-block;
+            white-space: nowrap;
+        }
+
+        .no-payment-remarks {
+            font-size: 10px;
+            color: #111;
+            line-height: 1.25;
+            word-break: break-word;
+            max-width: 120px;
+            text-align: center;
+        }
+
+        .no-payment-remarks .remarks-tag {
+            font-weight: 700;
+            color: #b02a37;
+        }
+
+        .no-payment-badge-no-remarks {
+            font-size: 9.5px;
+            color: #6c757d;
+            font-style: italic;
+            line-height: 1.2;
+            white-space: nowrap;
         }
 
         thead {
@@ -272,9 +336,35 @@
             }
 
             .no-payment-cell {
-                background-color: #e57373 !important;
+                background-color: #fff4f4 !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
+                padding: 3px 2px !important;
+            }
+
+            .no-payment-thumb {
+                width: 32px !important;
+                height: 32px !important;
+                border: 1px solid #999 !important;
+                box-shadow: none !important;
+            }
+
+            .no-payment-badge-no-img {
+                font-size: 8px !important;
+                border: 0.5px solid #ccc !important;
+                background: none !important;
+                color: #555 !important;
+                padding: 0 2px !important;
+            }
+
+            .no-payment-remarks {
+                font-size: 8.5px !important;
+                max-width: 100% !important;
+            }
+
+            .no-payment-badge-no-remarks {
+                font-size: 8px !important;
+                color: #666 !important;
             }
 
             .total-row td {
@@ -481,7 +571,7 @@
                     <tr>
                         <th class="client-col-header">CLIENT NAME</th>
                         @foreach ($dates as $date)
-                            <th>{{ \Carbon\Carbon::parse($date)->format('j-M') }}</th>
+                            <th style="min-width: 100px;">{{ \Carbon\Carbon::parse($date)->format('j-M') }}</th>
                         @endforeach
                     </tr>
                 </thead>
@@ -494,11 +584,41 @@
                             @foreach ($dates as $date)
                                 @php
                                     $col = $row->payments[$date] ?? null;
+                                    $pDetail = $row->payment_details[$date] ?? null;
                                 @endphp
                                 @if ($col !== null && $col > 0)
                                     <td class="paid-cell">{{ number_format($col, 2) }}</td>
                                 @else
-                                    <td class="no-payment-cell">&nbsp;</td>
+                                    @php
+                                        $hasImage = !empty($pDetail['image']);
+                                        $hasRemarks = !empty($pDetail['remarks']);
+                                        $imageSrc = $hasImage ? asset(ltrim($pDetail['image'], '/')) : '';
+                                        $remarksText = $hasRemarks ? $pDetail['remarks'] : '';
+                                    @endphp
+                                    <td class="no-payment-cell">
+                                        <div class="no-payment-content">
+                                            @if ($hasImage)
+                                                <div class="no-payment-img-wrap mb-1">
+                                                    <img src="{{ $imageSrc }}" 
+                                                         alt="Proof" 
+                                                         class="no-payment-thumb"
+                                                         title="Click to view full image"
+                                                         onclick="viewReportProof('{{ $imageSrc }}', '{{ addslashes($row->fullname) }}', '{{ \Carbon\Carbon::parse($date)->format('F d, Y') }}', '{{ addslashes($remarksText) }}')"
+                                                    >
+                                                </div>
+                                            @else
+                                                <div class="no-payment-badge-no-img">No image provided</div>
+                                            @endif
+
+                                            @if ($hasRemarks)
+                                                <div class="no-payment-remarks" title="{{ $remarksText }}">
+                                                    <span class="remarks-tag">Remarks:</span> {{ $remarksText }}
+                                                </div>
+                                            @else
+                                                <div class="no-payment-badge-no-remarks">No remarks provided</div>
+                                            @endif
+                                        </div>
+                                    </td>
                                 @endif
                             @endforeach
                         </tr>
@@ -522,6 +642,82 @@
         @endif
     </div>
 
+    <!-- View Proof Modal -->
+    <div class="modal fade no-print" id="reportProofModal" tabindex="-1" aria-labelledby="reportProofModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow border-0">
+                <div class="modal-header bg-dark text-white py-2">
+                    <h6 class="modal-title fw-bold" id="reportProofModalLabel">
+                        <i class="fas fa-camera text-danger me-2"></i> No Payment Proof & Remarks
+                    </h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <div class="mb-3 p-2 bg-light rounded border">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted small">Client:</span>
+                            <strong class="text-dark" id="modalProofClient">-</strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-1">
+                            <span class="text-muted small">Date:</span>
+                            <span class="text-dark fw-semibold" id="modalProofDate">-</span>
+                        </div>
+                    </div>
+
+                    <!-- Proof Image -->
+                    <div class="mb-3 text-center">
+                        <label class="fw-bold small text-dark d-block text-start mb-1">
+                            <i class="fas fa-image text-danger me-1"></i> Uploaded Proof Image:
+                        </label>
+                        <div class="bg-light p-2 rounded border">
+                            <img id="modalProofImg" src="" alt="Proof Image" class="img-fluid rounded" style="max-height: 380px; width: auto; object-fit: contain;">
+                            <div class="mt-2">
+                                <a id="modalProofLink" href="#" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-external-link-alt me-1"></i> View Full Image
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Remarks -->
+                    <div>
+                        <label class="fw-bold small text-dark d-block mb-1">
+                            <i class="fas fa-comment-dots text-primary me-1"></i> Remarks / Reason:
+                        </label>
+                        <div class="p-2 bg-light rounded border">
+                            <div id="modalProofRemarks" style="white-space: pre-wrap; font-size: 13px;">-</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer py-1 bg-light">
+                    <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function viewReportProof(imgSrc, clientName, dateStr, remarks) {
+            document.getElementById('modalProofClient').textContent = clientName || '-';
+            document.getElementById('modalProofDate').textContent = dateStr || '-';
+            document.getElementById('modalProofImg').src = imgSrc;
+            document.getElementById('modalProofLink').href = imgSrc;
+            
+            var remEl = document.getElementById('modalProofRemarks');
+            if (remarks && remarks.trim() !== '') {
+                remEl.textContent = remarks;
+                remEl.className = 'text-dark';
+            } else {
+                remEl.textContent = 'No remarks provided';
+                remEl.className = 'text-muted fst-italic';
+            }
+
+            var modalEl = document.getElementById('reportProofModal');
+            var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+        }
+    </script>
 </body>
 
 </html>

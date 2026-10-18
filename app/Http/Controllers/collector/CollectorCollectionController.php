@@ -144,8 +144,17 @@ class CollectorCollectionController extends Controller
             return redirect()->back()->with('error', 'Loan not found.');
         }
 
-        $request->validate([
-            'collection' => [
+        $rules = [
+            'type' => 'required|string',
+            'remarks' => 'nullable|string',
+        ];
+
+        if ($request->type === 'NO PAYMENT') {
+            $rules['image'] = 'required|image|mimes:jpeg,png,jpg,webp,gif|max:10240';
+            $rules['collection'] = 'nullable';
+            $rules['savings'] = 'nullable';
+        } else {
+            $rules['collection'] = [
                 'nullable',
                 'numeric',
                 'min:0',
@@ -154,17 +163,50 @@ class CollectorCollectionController extends Controller
                         $fail('Collection cannot exceed remaining balance.');
                     }
                 }
-            ],
-            'type' => 'required|string',
-            'savings' => 'nullable|numeric|min:0'
-        ]);
+            ];
+            $rules['savings'] = 'nullable|numeric|min:0';
+            $rules['image'] = 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:10240';
+        }
 
-        $collectionAmount = $request->type === 'NO PAYMENT' ? null : $request->collection;
+        $messages = [
+            'image.required' => 'Proof image is required when tagging as NO PAYMENT.',
+            'image.image' => 'The uploaded file must be an image.',
+            'image.mimes' => 'The image must be a file of type: jpeg, png, jpg, webp, gif.',
+            'image.max' => 'The image size may not be greater than 10MB.',
+        ];
 
-        DB::transaction(function () use ($request, $user, $loan, $collectionAmount) {
-            DB::table('clients_payments')->insert([
+        $request->validate($rules, $messages);
+
+        $collectionAmount = $request->type === 'NO PAYMENT' ? 0.00 : $request->collection;
+        $savingsAmount = ($request->type === 'NO PAYMENT' || empty($request->savings)) ? 0.00 : $request->savings;
+
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $file = $request->file('image');
+            $ext = strtolower($file->getClientOriginalExtension());
+            if ($ext === 'jpeg') {
+                $ext = 'jpg';
+            }
+            $filename = time() . '_' . uniqid() . '.' . $ext;
+            $destinationPath = public_path('collections/images');
+            if (!file_exists($destinationPath)) {
+                mkdir($destinationPath, 0755, true);
+            }
+
+            $targetFullPath = $destinationPath . DIRECTORY_SEPARATOR . $filename;
+            $savedFilename = $this->saveOptimizedImage($file, $targetFullPath, 1600, 75);
+            $imagePath = 'collections/images/' . $savedFilename;
+        }
+
+        DB::transaction(function () use ($request, $user, $loan, $collectionAmount, $savingsAmount, $imagePath) {
+            $existingPayment = DB::table('clients_payments')
+                ->where('client_loans_id', $request->loan_id)
+                ->whereDate('due_date', $request->due_date)
+                ->first();
+
+            $paymentData = [
                 'reference_number' => $request->reference_no,
-                'collected_by' => $user->id,
+                'collected_by' => $user->id ?? 1,
                 'due_date' => $request->due_date,
                 'client_id' => $request->client_id,
                 'client_loans_id' => $request->loan_id,
@@ -172,18 +214,31 @@ class CollectorCollectionController extends Controller
                 'daily' => $request->daily,
                 'old_balance' => $loan->balance, // real balance from DB
                 'collection' => $collectionAmount,
-                'savings_amount' => $request->savings ?? 0.00,
+                'savings_amount' => $savingsAmount,
                 'type' => $request->type,
+                'remarks' => $request->remarks,
                 'is_collected' => 0,
-                'created_by' => $user->id,
-                'created_at' => now(),
+                'created_by' => $user->id ?? 1,
                 'updated_at' => now(),
-            ]);
+            ];
 
-            if ($request->filled('savings') && $request->savings > 0) {
+            if ($imagePath !== null) {
+                $paymentData['image'] = $imagePath;
+            }
+
+            if ($existingPayment) {
+                DB::table('clients_payments')
+                    ->where('id', $existingPayment->id)
+                    ->update($paymentData);
+            } else {
+                $paymentData['created_at'] = now();
+                DB::table('clients_payments')->insert($paymentData);
+            }
+
+            if ($request->type !== 'NO PAYMENT' && $savingsAmount > 0) {
                 DB::table('clients_loans')
                     ->where('id', $request->loan_id)
-                    ->increment('savings_balance', $request->savings);
+                    ->increment('savings_balance', $savingsAmount);
             }
         });
 
@@ -206,6 +261,10 @@ class CollectorCollectionController extends Controller
         try {
             foreach ($payments as $paymentData) {
                 if (empty($paymentData['type'])) continue;
+                if ($paymentData['type'] === 'NO PAYMENT') {
+                    // Skip NO PAYMENT in bulk save because it requires proof image upload via single save
+                    continue;
+                }
 
                 $loan = DB::table('clients_loans')
                     ->where('id', $paymentData['loan_id'])
@@ -253,5 +312,65 @@ class CollectorCollectionController extends Controller
             DB::rollBack();
             return redirect()->back()->with('error', 'Error during bulk save: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Compress and optimize uploaded proof image to keep file size well under 1MB.
+     */
+    protected function saveOptimizedImage($file, $destinationFullPath, $maxDimension = 1600, $quality = 75)
+    {
+        $realPath = $file->getRealPath();
+        $finalFilename = basename($destinationFullPath);
+        $dir = dirname($destinationFullPath);
+
+        if (extension_loaded('gd') && function_exists('imagecreatefromstring')) {
+            $imageData = @file_get_contents($realPath);
+            if ($imageData !== false) {
+                $srcImg = @imagecreatefromstring($imageData);
+                if ($srcImg !== false) {
+                    $width = imagesx($srcImg);
+                    $height = imagesy($srcImg);
+
+                    // Resize if larger than maxDimension
+                    if ($width > $maxDimension || $height > $maxDimension) {
+                        if ($width > $height) {
+                            $newWidth = $maxDimension;
+                            $newHeight = (int)round(($height * $maxDimension) / $width);
+                        } else {
+                            $newHeight = $maxDimension;
+                            $newWidth = (int)round(($width * $maxDimension) / $height);
+                        }
+
+                        $dstImg = imagecreatetruecolor($newWidth, $newHeight);
+                        $white = imagecolorallocate($dstImg, 255, 255, 255);
+                        imagefilledrectangle($dstImg, 0, 0, $newWidth, $newHeight, $white);
+
+                        imagecopyresampled($dstImg, $srcImg, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+                        imagedestroy($srcImg);
+                        $srcImg = $dstImg;
+                    }
+
+                    $ext = strtolower($file->getClientOriginalExtension());
+                    if ($ext === 'png' && $file->getSize() > 800 * 1024) {
+                        $finalFilename = preg_replace('/\.png$/i', '.jpg', $finalFilename);
+                        $destinationFullPath = $dir . DIRECTORY_SEPARATOR . $finalFilename;
+                        imagejpeg($srcImg, $destinationFullPath, $quality);
+                    } elseif ($ext === 'png') {
+                        imagepng($srcImg, $destinationFullPath, 6);
+                    } elseif ($ext === 'webp' && function_exists('imagewebp')) {
+                        imagewebp($srcImg, $destinationFullPath, $quality);
+                    } else {
+                        imagejpeg($srcImg, $destinationFullPath, $quality);
+                    }
+
+                    imagedestroy($srcImg);
+                    return $finalFilename;
+                }
+            }
+        }
+
+        // Fallback: move file directly
+        $file->move($dir, $finalFilename);
+        return $finalFilename;
     }
 }

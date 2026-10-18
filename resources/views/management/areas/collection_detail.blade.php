@@ -305,7 +305,9 @@
                                                 @endif
                                             </td>
                                             <td>
-                                                @if ($client->payment && !is_null($client->payment->collection))
+                                                @if ($client->payment && ($client->payment->type === 'NO PAYMENT' || (isset($client->payment->collection) && $client->payment->collection == 0)))
+                                                    0
+                                                @elseif ($client->payment && !is_null($client->payment->collection))
                                                     ₱{{ number_format($client->payment->collection, 2) }}
                                                 @else
                                                     -
