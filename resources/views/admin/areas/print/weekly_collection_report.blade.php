@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $areas_name }} - {{ ($reportMode ?? 'detailed') === 'summary' ? 'Collection Summary Report' : 'Weekly Collection Report' }} {{ ($typeFilter ?? 'all') === 'lapsed' ? '(Lapsed Accounts)' : (($typeFilter ?? 'all') === 'active' ? '(Active Clients)' : '') }}</title>
+    <title>{{ $areas_name }} - {{ ($reportMode ?? 'detailed') === 'summary' ? 'Collection Summary Report' : 'Weekly Collection Report' }} {{ !empty($selectedClientName) ? '('.$selectedClientName.')' : (!empty($selectedClientsCount) ? '('.$selectedClientsCount.' Selected Clients)' : (($typeFilter ?? 'all') === 'lapsed' ? '(Lapsed Accounts)' : (($typeFilter ?? 'all') === 'active' ? '(Active Clients)' : ''))) }}</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -396,6 +396,18 @@
             <form action="" method="GET" class="d-flex align-items-center gap-2 m-0">
                 <input type="hidden" name="from" value="{{ $fromFormatted }}">
                 <input type="hidden" name="to" value="{{ $toFormatted }}">
+                @if (!empty($selectedClientId))
+                    <input type="hidden" name="client_id" value="{{ $selectedClientId }}">
+                @endif
+                @if (!empty($selectedClientIds))
+                    @if (is_array($selectedClientIds))
+                        @foreach ($selectedClientIds as $cid)
+                            <input type="hidden" name="client_ids[]" value="{{ $cid }}">
+                        @endforeach
+                    @else
+                        <input type="hidden" name="client_ids" value="{{ $selectedClientIds }}">
+                    @endif
+                @endif
                 
                 <label class="form-label mb-0 fw-semibold text-nowrap">View:</label>
                 <select name="mode" class="form-select form-select-sm" onchange="this.form.submit()" style="width: auto;">
@@ -429,7 +441,11 @@
                         <strong>Period:</strong> {{ \Carbon\Carbon::parse($fromFormatted)->format('M d, Y') }} &mdash; {{ \Carbon\Carbon::parse($toFormatted)->format('M d, Y') }}
                         <span class="mx-1">&bull;</span>
                         <strong>Filter:</strong>
-                        @if (($typeFilter ?? 'all') === 'active')
+                        @if (!empty($selectedClientName))
+                            <span class="badge bg-primary text-white" style="font-size: 11px;">Client: {{ $selectedClientName }}</span>
+                        @elseif (!empty($selectedClientsCount))
+                            <span class="badge bg-primary text-white" style="font-size: 11px;">{{ $selectedClientsCount }} Selected Clients</span>
+                        @elseif (($typeFilter ?? 'all') === 'active')
                             <span class="text-success">Active Clients</span>
                         @elseif (($typeFilter ?? 'all') === 'lapsed')
                             <span class="text-danger">Lapsed Account</span>

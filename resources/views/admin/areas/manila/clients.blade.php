@@ -166,9 +166,14 @@
                                                     <td>{{ $client->gender }}</td>
                                                     <td>
                                                         <a href="{{ route('admin.area.clients.loans', $client->id) }}"
-                                                            class="btn btn-sm btn-info">
+                                                            class="btn btn-sm btn-info" title="View Loans">
                                                             <i class="fas fa-eye"></i> View Loans
                                                         </a>
+                                                        <button type="button" class="btn btn-sm btn-outline-primary open-client-weekly-report"
+                                                            data-id="{{ $client->id }}" data-fullname="{{ $client->fullname }}"
+                                                            title="Generate Weekly Collection Report for {{ $client->fullname }}">
+                                                            <i class="fas fa-calendar-week"></i> Report
+                                                        </button>
                                                         <button type="button" class="btn btn-sm btn-warning reassign-client-btn"
                                                             data-id="{{ $client->id }}"
                                                             data-fullname="{{ $client->fullname }}"
@@ -415,6 +420,20 @@
             var reportMode = $(this).data('mode') || 'detailed';
             $('#weeklyCollectionReportModal .weekly-report-type-select').val(filterType);
             $('#weeklyCollectionReportModal .weekly-report-mode-select').val(reportMode);
+            if (typeof window.resetWeeklyReportClientFilter === 'function') {
+                window.resetWeeklyReportClientFilter();
+            }
+            $('#weeklyCollectionReportModal').modal('show');
+        });
+
+        $(document).on('click', '.open-client-weekly-report', function(e) {
+            e.preventDefault();
+            var clientId = $(this).data('id');
+            $('#weeklyCollectionReportModal .weekly-report-type-select').val('all');
+            $('#weeklyCollectionReportModal .weekly-report-mode-select').val('detailed');
+            if (typeof window.setWeeklyReportSingleClient === 'function') {
+                window.setWeeklyReportSingleClient(clientId);
+            }
             $('#weeklyCollectionReportModal').modal('show');
         });
     </script>

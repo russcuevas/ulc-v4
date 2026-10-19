@@ -641,6 +641,42 @@ class AdminManilaClientsController extends Controller
             ->orderBy('fullname', 'asc')
             ->get();
 
+        // Client filtering (Single or Multiple specific clients)
+        $selectedClientId = $request->query('client_id');
+        $selectedClientIds = $request->query('client_ids');
+
+        $filterClientIds = [];
+        if (!empty($selectedClientIds)) {
+            if (is_array($selectedClientIds)) {
+                $filterClientIds = array_map('intval', array_filter($selectedClientIds));
+            } else {
+                $filterClientIds = array_map('intval', array_filter(explode(',', $selectedClientIds)));
+            }
+        } elseif (!empty($selectedClientId) && $selectedClientId !== 'all') {
+            $filterClientIds = [intval($selectedClientId)];
+        }
+
+        if (!empty($filterClientIds)) {
+            $filteredClients = $allClients->filter(function ($c) use ($filterClientIds) {
+                return in_array((int)$c->id, $filterClientIds);
+            });
+
+            if ($filteredClients->count() < count($filterClientIds)) {
+                $existingIds = $filteredClients->pluck('id')->map(fn($v) => (int)$v)->toArray();
+                $missingIds = array_diff($filterClientIds, $existingIds);
+                if (!empty($missingIds)) {
+                    $missingClients = DB::table('clients')->whereIn('id', $missingIds)->get();
+                    $allClients = $filteredClients->concat($missingClients)->sortBy('fullname')->values();
+                } else {
+                    $allClients = $filteredClients->values();
+                }
+            } else {
+                $allClients = $filteredClients->values();
+            }
+
+            $allClientIds = $allClients->pluck('id')->toArray();
+        }
+
         // Fetch latest active/current loans for these clients
         $loans = DB::table('clients_loans')
             ->whereIn('client_id', $allClientIds)
@@ -747,12 +783,14 @@ class AdminManilaClientsController extends Controller
             $isLapsed = ($hasBalance && $loanEnd && $compareDate->gt($loanEnd)) || (!empty($clientLapsedPayments[$c->id]) && $hasBalance);
             $isActive = (!$isLapsed) && ($hasBalance || $totalPaidThisWeek > 0);
 
-            // Filter by type
-            if ($typeFilter === 'active' && !$isActive) {
-                continue;
-            }
-            if ($typeFilter === 'lapsed' && !$isLapsed) {
-                continue;
+            // Filter by type (only apply if specific clients were not manually chosen)
+            if (empty($filterClientIds)) {
+                if ($typeFilter === 'active' && !$isActive) {
+                    continue;
+                }
+                if ($typeFilter === 'lapsed' && !$isLapsed) {
+                    continue;
+                }
             }
 
             // Sum into daily totals only for the filtered clients
@@ -804,6 +842,17 @@ class AdminManilaClientsController extends Controller
         $reportMode = $request->query('mode', 'detailed');
         $grandTotal = array_sum($dailyTotals);
 
+        $selectedClientName = null;
+        $selectedClientsCount = 0;
+        if (!empty($filterClientIds)) {
+            if (count($filterClientIds) === 1) {
+                $singleClient = $allClients->first();
+                $selectedClientName = $singleClient->fullname ?? null;
+            } else {
+                $selectedClientsCount = count($allClients);
+            }
+        }
+
         return view('admin.areas.print.weekly_collection_report', compact(
             'areas_name',
             'location_name',
@@ -817,7 +866,11 @@ class AdminManilaClientsController extends Controller
             'totalPayingClients',
             'grandTotal',
             'typeFilter',
-            'reportMode'
+            'reportMode',
+            'selectedClientId',
+            'selectedClientIds',
+            'selectedClientName',
+            'selectedClientsCount'
         ));
     }
 }
