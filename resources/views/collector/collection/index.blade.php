@@ -141,6 +141,12 @@
                                                 <i class="fas fa-save"></i>&nbsp; Bulk Save All
                                             </button>
 
+                                            @if (!empty($hasSaMapping) && !empty($mappedSaArea))
+                                                <button type="button" class="btn btn-warning btn-sm px-3 text-white font-weight-bold" style="background-color: #FF5F00; border-color: #FF5F00;" data-toggle="modal" data-target="#addSpecificClientModal" id="openAddSpecificClientBtn">
+                                                    <i class="fas fa-user-plus mr-1"></i> Add Specific Client
+                                                </button>
+                                            @endif
+
                                             <button class="btn btn-success btn-sm px-3" data-toggle="modal"
                                                 data-target="#selectDate">
                                                 <i class="fas fa-calendar"></i>&nbsp; Select Date
@@ -154,6 +160,9 @@
                                 @include('collector.collection.modals.select_date')
                                 @include('collector.collection.modals.no_payment')
                                 @include('collector.collection.modals.view_proof')
+                                @if (!empty($hasSaMapping) && !empty($mappedSaArea))
+                                    @include('collector.collection.modals.add_specific_client')
+                                @endif
                                 <div class="card-body">
                                     <div class="row g-3 mb-4">
                                         <div class="col-12 mb-3">
@@ -283,11 +292,18 @@
                                                         data-status="{{ $client->is_overdue ? 'lapsed' : 'normal' }}"
                                                         data-client-id="{{ $client->id }}"
                                                         data-loan-id="{{ $client->loan->id ?? '' }}"
-                                                        data-area-id="{{ $client->area_id }}"
+                                                        data-area-id="{{ $area->id }}"
                                                         data-client-name="{{ $client->fullname }}"
                                                         data-balance="{{ $client->loan->balance ?? 0 }}"
                                                         data-daily="{{ $client->loan->daily ?? 0 }}">
-                                                        <td>{{ $client->fullname }}</td>
+                                                        <td>
+                                                            {{ $client->fullname }}
+                                                            @if ($client->area_id != $area->id && !empty($client->area_name))
+                                                                <span class="badge ml-1" style="font-size: 10px; background-color: #FF5F00; color: #fff;" title="From Special Area: {{ $client->area_name }}">
+                                                                    <i class="fas fa-external-link-alt mr-1"></i>{{ $client->area_name }}
+                                                                </span>
+                                                            @endif
+                                                        </td>
 
                                                         {{-- Due Date --}}
                                                         <td>
@@ -354,6 +370,18 @@
                                                                 @else
                                                                     <span class="badge badge-info">To Collect</span>
                                                                 @endif
+
+                                                                @if ($client->area_id != $area->id)
+                                                                    <div class="mt-1">
+                                                                        <button type="button" class="btn btn-xs btn-outline-danger btn-remove-specific-client"
+                                                                            data-loan-id="{{ $client->loan->id }}"
+                                                                            data-payment-id="{{ $client->payment->id ?? '' }}"
+                                                                            data-client-name="{{ $client->fullname }}"
+                                                                            title="Remove this client from current collection sheet">
+                                                                            <i class="fas fa-undo mr-1"></i> Remove
+                                                                        </button>
+                                                                    </div>
+                                                                @endif
                                                             </td>
                                                         @else
                                                             <td>
@@ -393,13 +421,23 @@
                                                                     Save collection
                                                                 </button>
 
+                                                                @if ($client->area_id != $area->id)
+                                                                    <button type="button" class="btn btn-outline-danger btn-sm ml-1 btn-remove-specific-client"
+                                                                        data-loan-id="{{ $client->loan->id }}"
+                                                                        data-payment-id="{{ $client->payment->id ?? '' }}"
+                                                                        data-client-name="{{ $client->fullname }}"
+                                                                        title="Remove this client from current collection sheet">
+                                                                        <i class="fas fa-times"></i>
+                                                                    </button>
+                                                                @endif
+
                                                                 {{-- Hidden Fields --}}
                                                                 <input type="hidden" name="client_id"
                                                                     value="{{ $client->id }}">
                                                                 <input type="hidden" name="loan_id"
                                                                     value="{{ $client->loan->id ?? '' }}">
                                                                 <input type="hidden" name="area_id"
-                                                                    value="{{ $client->area_id }}">
+                                                                    value="{{ $area->id }}">
                                                                 <input type="hidden" name="reference_no"
                                                                     value="{{ $refNo }}">
                                                                 <input type="hidden" name="due_date"
@@ -932,6 +970,358 @@
                 var url = new URL(window.location.href);
                 url.searchParams.set('area_id', areaId);
                 window.location.href = url.toString();
+            });
+
+            // ----------------------------------------------------
+            // ADD SPECIFIC CLIENT (SPECIAL AREA) FUNCTIONALITY
+            // ----------------------------------------------------
+            let saClientsCache = [];
+            let currentSaFilter = 'all';
+
+            function loadSaClients(areaId) {
+                if (!areaId) {
+                    $('#saModalLoading').hide();
+                    $('#saTableContainer').hide();
+                    $('#saEmptyState').show();
+                    $('#saEmptyStateMsg').text('Please select a Special Area.');
+                    return;
+                }
+
+                $('#saModalLoading').show();
+                $('#saTableContainer').hide();
+                $('#saEmptyState').hide();
+                $('#selectAllSaCheckbox').prop('checked', false);
+                $('#btnBulkAddSaClients').prop('disabled', true);
+                updateSaSelectedCount();
+
+                $.ajax({
+                    url: "{{ route('collector.collections.get-sa-clients') }}",
+                    type: "GET",
+                    data: {
+                        sa_area_id: areaId,
+                        target_ref_no: "{{ $refNo }}",
+                        selected_date: "{{ $selectedDate }}"
+                    },
+                    dataType: "json",
+                    success: function(res) {
+                        $('#saModalLoading').hide();
+                        if (res.success && res.clients && res.clients.length > 0) {
+                            saClientsCache = res.clients;
+                            updateSaCounts();
+                            renderSaClientsTable();
+                            $('#saTableContainer').show();
+                        } else {
+                            saClientsCache = [];
+                            updateSaCounts();
+                            $('#saEmptyState').show();
+                            $('#saEmptyStateMsg').text('No clients found in ' + (res.sa_area_name || 'this area') + ' for this date.');
+                        }
+                    },
+                    error: function(xhr) {
+                        $('#saModalLoading').hide();
+                        $('#saEmptyState').show();
+                        $('#saEmptyStateMsg').text('Failed to load Special Area clients. Please try again.');
+                        if (typeof notyf !== 'undefined') {
+                            notyf.error('Error fetching Special Area clients.');
+                        }
+                    }
+                });
+            }
+
+            function updateSaCounts() {
+                let total = saClientsCache.length;
+                let withPay = saClientsCache.filter(c => c.has_payment).length;
+                let noPay = saClientsCache.filter(c => c.is_no_payment).length;
+                let available = saClientsCache.filter(c => !c.is_already_added).length;
+
+                $('#saCountAll').text(total);
+                $('#saCountWithPay').text(withPay);
+                $('#saCountNoPay').text(noPay);
+                $('#saCountAvailable').text(available);
+            }
+
+            function renderSaClientsTable() {
+                const tbody = $('#saClientsTableBody');
+                tbody.empty();
+
+                const search = ($('#saClientSearch').val() || '').trim().toLowerCase();
+
+                let filtered = saClientsCache.filter(function(item) {
+                    if (search && !item.fullname.toLowerCase().includes(search)) {
+                        return false;
+                    }
+
+                    if (currentSaFilter === 'with-payment') {
+                        return item.has_payment;
+                    } else if (currentSaFilter === 'no-payment') {
+                        return item.is_no_payment;
+                    } else if (currentSaFilter === 'available') {
+                        return !item.is_already_added;
+                    }
+                    return true;
+                });
+
+                if (filtered.length === 0) {
+                    tbody.append(`
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-muted">
+                                <i class="fas fa-search mr-1"></i> No matching clients found.
+                            </td>
+                        </tr>
+                    `);
+                    return;
+                }
+
+                filtered.forEach(function(c) {
+                    let checkboxHtml = '';
+                    let actionHtml = '';
+
+                    if (c.is_already_added) {
+                        checkboxHtml = `<input type="checkbox" disabled title="Already in current sheet">`;
+                        actionHtml = `
+                            <span class="badge badge-success px-2 py-1"><i class="fas fa-check mr-1"></i> In Table</span>
+                            <button type="button" class="btn btn-xs btn-outline-danger ml-1 btn-modal-remove-client" 
+                                data-loan-id="${c.loan_id}" data-payment-id="${c.payment_id || ''}" data-name="${c.fullname}" title="Remove from sheet">
+                                <i class="fas fa-undo"></i>
+                            </button>
+                        `;
+                    } else {
+                        checkboxHtml = `<input type="checkbox" class="sa-client-cb" value="${c.loan_id}" data-client-id="${c.client_id}">`;
+                        actionHtml = `
+                            <button type="button" class="btn btn-xs btn-primary btn-modal-select-single px-3 font-weight-bold" 
+                                style="background-color: #FF5F00; border-color: #FF5F00;"
+                                data-loan-id="${c.loan_id}" data-name="${c.fullname}">
+                                <i class="fas fa-plus mr-1"></i> Select
+                            </button>
+                        `;
+                    }
+
+                    let rowHtml = `
+                        <tr class="${c.is_already_added ? 'table-light' : ''}">
+                            <td style="text-align: center; vertical-align: middle;">
+                                ${checkboxHtml}
+                            </td>
+                            <td style="vertical-align: middle;">
+                                <strong>${c.fullname}</strong>
+                            </td>
+                            <td style="vertical-align: middle;">
+                                ₱${Number(c.daily).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                            </td>
+                            <td style="vertical-align: middle;">
+                                ₱${Number(c.balance).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                            </td>
+                            <td style="vertical-align: middle;">
+                                <span class="badge ${c.status_class} px-2 py-1">${c.status_label}</span>
+                            </td>
+                            <td style="text-align: center; vertical-align: middle;">
+                                ${actionHtml}
+                            </td>
+                        </tr>
+                    `;
+                    tbody.append(rowHtml);
+                });
+
+                updateSaSelectedCount();
+            }
+
+            function updateSaSelectedCount() {
+                const count = $('.sa-client-cb:checked').length;
+                $('#saSelectedCountText').text(count + ' client(s) selected');
+                $('#btnBulkAddSaClients').prop('disabled', count === 0);
+            }
+
+            // Modal open handler
+            $('#addSpecificClientModal').on('shown.bs.modal', function() {
+                const initialAreaId = $('#saAreaSelect').val();
+                loadSaClients(initialAreaId);
+            });
+
+            // Special area select change
+            $('#saAreaSelect').on('change', function() {
+                loadSaClients($(this).val());
+            });
+
+            // Search input
+            $('#saClientSearch').on('input', function() {
+                renderSaClientsTable();
+            });
+
+            $('#btnSaClearSearch').on('click', function() {
+                $('#saClientSearch').val('');
+                renderSaClientsTable();
+            });
+
+            // Filter buttons
+            $('.btn-sa-filter').on('click', function() {
+                $('.btn-sa-filter').removeClass('active');
+                $(this).addClass('active');
+                currentSaFilter = $(this).data('filter');
+                renderSaClientsTable();
+            });
+
+            // Select all checkbox
+            $('#selectAllSaCheckbox').on('change', function() {
+                const isChecked = $(this).is(':checked');
+                $('.sa-client-cb').prop('checked', isChecked);
+                updateSaSelectedCount();
+            });
+
+            $(document).on('change', '.sa-client-cb', function() {
+                updateSaSelectedCount();
+                const totalCbs = $('.sa-client-cb').length;
+                const checkedCbs = $('.sa-client-cb:checked').length;
+                $('#selectAllSaCheckbox').prop('checked', totalCbs > 0 && totalCbs === checkedCbs);
+            });
+
+            // Single select button in modal
+            $(document).on('click', '.btn-modal-select-single', function() {
+                const loanId = $(this).data('loan-id');
+                const clientName = $(this).data('name');
+                const btn = $(this);
+
+                btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status"></span>');
+
+                $.ajax({
+                    url: "{{ route('collector.collections.add-specific-client') }}",
+                    type: "POST",
+                    data: {
+                        _token: "{{ csrf_token() }}",
+                        loan_ids: [loanId],
+                        reference_no: "{{ $refNo }}",
+                        due_date: "{{ $selectedDate }}",
+                        area_id: "{{ $area->id }}"
+                    },
+                    dataType: "json",
+                    success: function(res) {
+                        if (res.success) {
+                            if (typeof notyf !== 'undefined') {
+                                notyf.success(res.message);
+                            }
+                            setTimeout(function() {
+                                window.location.reload();
+                            }, 500);
+                        } else {
+                            btn.prop('disabled', false).html('<i class="fas fa-plus mr-1"></i> Select');
+                            if (typeof notyf !== 'undefined') {
+                                notyf.error(res.message || 'Error adding client.');
+                            }
+                        }
+                    },
+                    error: function(xhr) {
+                        btn.prop('disabled', false).html('<i class="fas fa-plus mr-1"></i> Select');
+                        const msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Error adding client.';
+                        if (typeof notyf !== 'undefined') {
+                            notyf.error(msg);
+                        }
+                    }
+                });
+            });
+
+            // Bulk Add Selected SA Clients
+            $('#btnBulkAddSaClients').on('click', function() {
+                const checkedCbs = $('.sa-client-cb:checked');
+                let loanIds = [];
+                checkedCbs.each(function() {
+                    loanIds.push($(this).val());
+                });
+
+                if (loanIds.length === 0) {
+                    if (typeof notyf !== 'undefined') {
+                        notyf.error('Please select at least one client.');
+                    }
+                    return;
+                }
+
+                if (!confirm(`Are you sure you want to add ${loanIds.length} selected client(s) to {{ $area->areas_name }} collection sheet for {{ \Carbon\Carbon::parse($selectedDate)->format('M d, Y') }}?`)) {
+                    return;
+                }
+
+                const btn = $(this);
+                btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm mr-1" role="status"></span> Adding...');
+
+                $.ajax({
+                    url: "{{ route('collector.collections.add-specific-client') }}",
+                    type: "POST",
+                    data: {
+                        _token: "{{ csrf_token() }}",
+                        loan_ids: loanIds,
+                        reference_no: "{{ $refNo }}",
+                        due_date: "{{ $selectedDate }}",
+                        area_id: "{{ $area->id }}"
+                    },
+                    dataType: "json",
+                    success: function(res) {
+                        if (res.success) {
+                            if (typeof notyf !== 'undefined') {
+                                notyf.success(res.message);
+                            }
+                            setTimeout(function() {
+                                window.location.reload();
+                            }, 500);
+                        } else {
+                            btn.prop('disabled', false).html('<i class="fas fa-plus-circle mr-1"></i> Add Selected Clients');
+                            if (typeof notyf !== 'undefined') {
+                                notyf.error(res.message || 'Error adding clients.');
+                            }
+                        }
+                    },
+                    error: function(xhr) {
+                        btn.prop('disabled', false).html('<i class="fas fa-plus-circle mr-1"></i> Add Selected Clients');
+                        const msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Error adding clients.';
+                        if (typeof notyf !== 'undefined') {
+                            notyf.error(msg);
+                        }
+                    }
+                });
+            });
+
+            // Remove client from current sheet (modal or main table)
+            $(document).on('click', '.btn-remove-specific-client, .btn-modal-remove-client', function() {
+                const loanId = $(this).data('loan-id');
+                const paymentId = $(this).data('payment-id');
+                const clientName = $(this).data('client-name') || $(this).data('name') || 'this client';
+                const btn = $(this);
+
+                if (!confirm(`Remove ${clientName} from the current collection sheet?`)) {
+                    return;
+                }
+
+                btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status"></span>');
+
+                $.ajax({
+                    url: "{{ route('collector.collections.remove-specific-client') }}",
+                    type: "POST",
+                    data: {
+                        _token: "{{ csrf_token() }}",
+                        loan_id: loanId,
+                        payment_id: paymentId,
+                        due_date: "{{ $selectedDate }}",
+                        reference_no: "{{ $refNo }}"
+                    },
+                    dataType: "json",
+                    success: function(res) {
+                        if (res.success) {
+                            if (typeof notyf !== 'undefined') {
+                                notyf.success(res.message);
+                            }
+                            setTimeout(function() {
+                                window.location.reload();
+                            }, 500);
+                        } else {
+                            btn.prop('disabled', false).html('<i class="fas fa-undo mr-1"></i> Remove');
+                            if (typeof notyf !== 'undefined') {
+                                notyf.error(res.message || 'Error removing client.');
+                            }
+                        }
+                    },
+                    error: function(xhr) {
+                        btn.prop('disabled', false).html('<i class="fas fa-undo mr-1"></i> Remove');
+                        const msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Error removing client.';
+                        if (typeof notyf !== 'undefined') {
+                            notyf.error(msg);
+                        }
+                    }
+                });
             });
 
         });

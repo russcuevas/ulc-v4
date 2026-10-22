@@ -47,28 +47,37 @@ class CollectorCollectionController extends Controller
                 ->toArray();
         }
 
-        // Get matched area records keyed by ID for display lookup
-        $matchedAreas = DB::table('areas')
-            ->whereIn('id', $allMatchedAreaIds)
-            ->get()
-            ->keyBy('id');
+        $areas_name = $area->areas_name ?? 'UNKNOWN';
+        $dateCode = \Carbon\Carbon::parse($selectedDate)->format('Y-m-d');
+        $refNo = $dateCode . '-' . strtoupper($areas_name) . '-001';
 
-        // ✅ FIXED QUERY
-        // Include:
-        // - balance > 0
-        // - loan already started
-        // - include overdue (removed loan_to filter)
+        // Check for any loans that already have a payment tied to this reference number
+        $paymentLoanIds = DB::table('clients_payments')
+            ->where('reference_number', $refNo)
+            ->pluck('client_loans_id')
+            ->toArray();
+
+        // ✅ QUERY: Include active loans for current area OR any loans specifically added to this reference number
         $loans = DB::table('clients_loans as cl')
             ->join('clients as c', 'cl.client_id', '=', 'c.id')
-            ->whereIn('c.area_id', $allMatchedAreaIds)
+            ->where(function ($q) use ($allMatchedAreaIds, $paymentLoanIds) {
+                $q->whereIn('c.area_id', $allMatchedAreaIds)
+                  ->orWhereIn('cl.id', $paymentLoanIds);
+            })
             ->whereDate('cl.loan_from', '<=', $selectedDate)
             ->select('cl.*', 'c.fullname', 'c.area_id')
             ->orderByDesc('cl.id')
             ->get();
 
+        // Get matched area records keyed by ID for display lookup (including any imported client areas)
+        $allReferencedAreaIds = array_unique(array_merge($allMatchedAreaIds, $loans->pluck('area_id')->toArray()));
+        $matchedAreas = DB::table('areas')
+            ->whereIn('id', $allReferencedAreaIds)
+            ->get()
+            ->keyBy('id');
+
         $payments = DB::table('clients_payments')
-            ->whereDate('due_date', $selectedDate)
-            ->whereIn('client_loans_id', $loans->pluck('id')->toArray())
+            ->where('reference_number', $refNo)
             ->get()
             ->keyBy(function ($item) {
                 return (int)$item->client_loans_id;
@@ -86,6 +95,7 @@ class CollectorCollectionController extends Controller
                 'fullname' => $loan->fullname,
                 'area_id' => $loan->area_id,
                 'location_name' => $areaRecord->location_name ?? 'N/A',
+                'area_name' => $areaRecord->areas_name ?? '',
                 'loan' => $loan,
                 'payment' => $payment,
                 'is_overdue' => $isOverdue,
@@ -94,12 +104,10 @@ class CollectorCollectionController extends Controller
         })->filter(function ($c) {
             $balance = $c->loan->balance ?? 0;
             $status = $c->loan->status ?? '';
-            return ($balance > 0 && $status !== 'paid') || ($c->payment && ($c->payment->collection ?? 0) > 0);
+            return ($balance > 0 && $status !== 'paid') 
+                || ($c->payment && ($c->payment->collection ?? 0) > 0)
+                || ($c->payment && $c->payment->type !== null);
         })->values();
-
-        $areas_name = $area->areas_name ?? 'UNKNOWN';
-        $dateCode = \Carbon\Carbon::parse($selectedDate)->format('Y-m-d');
-        $refNo = $dateCode . '-' . strtoupper($areas_name) . '-001';
 
         $totalClients = $clients->count();
 
@@ -115,6 +123,29 @@ class CollectorCollectionController extends Controller
             return $c->payment->savings_amount ?? 0;
         });
 
+        // Strict mapping: FC1 => FC-SA1, FC2 => FC-SA2, FC3 => FC-SA3, FC4 => FC-SA4, FC7 => FC-SA7
+        $areaSaMap = [
+            'FC1' => 'FC-SA1',
+            'FC2' => 'FC-SA2',
+            'FC3' => 'FC-SA3',
+            'FC4' => 'FC-SA4',
+            'FC7' => 'FC-SA7',
+        ];
+
+        $currentAreaName = strtoupper(trim($area->areas_name ?? ''));
+        $mappedSaName = $areaSaMap[$currentAreaName] ?? null;
+        $mappedSaArea = null;
+        $hasSaMapping = false;
+
+        if ($mappedSaName) {
+            $mappedSaArea = DB::table('areas')
+                ->where('areas_name', $mappedSaName)
+                ->first();
+            if ($mappedSaArea) {
+                $hasSaMapping = true;
+            }
+        }
+
         return view('collector.collection.index', compact(
             'clients',
             'area',
@@ -125,7 +156,10 @@ class CollectorCollectionController extends Controller
             'totalDailyCollectibles',
             'totalSavings',
             'myAreas',
-            'selectedAreaId'
+            'selectedAreaId',
+            'hasSaMapping',
+            'mappedSaArea',
+            'mappedSaName'
         ));
     }
 
@@ -372,5 +406,327 @@ class CollectorCollectionController extends Controller
         // Fallback: move file directly
         $file->move($dir, $finalFilename);
         return $finalFilename;
+    }
+
+    /**
+     * Get clients of a selected Special Area (e.g. FC-SA1) along with their payment status on the selected date.
+     */
+    public function CollectorGetSaClients(Request $request)
+    {
+        $saAreaId = $request->input('sa_area_id');
+        $targetRefNo = $request->input('target_ref_no');
+        $selectedDate = $request->input('selected_date', now()->format('Y-m-d'));
+
+        $saArea = DB::table('areas')->where('id', $saAreaId)->first();
+        if (!$saArea) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Special Area not found.',
+                'clients' => []
+            ], 404);
+        }
+
+        // Strict mapping check: FC1 = FC-SA1, FC2 = FC-SA2, FC3 = FC-SA3, FC4 = FC-SA4, FC7 = FC-SA7
+        $areaSaMap = [
+            'FC1' => 'FC-SA1',
+            'FC2' => 'FC-SA2',
+            'FC3' => 'FC-SA3',
+            'FC4' => 'FC-SA4',
+            'FC7' => 'FC-SA7',
+        ];
+
+        if (!empty($targetRefNo)) {
+            $parts = explode('-', $targetRefNo);
+            if (count($parts) >= 4) {
+                $currentAreaCode = strtoupper($parts[3]);
+                $allowedSaName = $areaSaMap[$currentAreaCode] ?? null;
+                if (!$allowedSaName || strtoupper($saArea->areas_name) !== strtoupper($allowedSaName)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Access restricted. {$currentAreaCode} can only access {$allowedSaName}.",
+                        'clients' => []
+                    ], 403);
+                }
+            }
+        }
+
+        // Get loans for this SA area
+        $loans = DB::table('clients_loans as cl')
+            ->join('clients as c', 'cl.client_id', '=', 'c.id')
+            ->where('c.area_id', $saAreaId)
+            ->whereDate('cl.loan_from', '<=', $selectedDate)
+            ->select('cl.*', 'c.fullname', 'c.id as client_id', 'c.area_id')
+            ->orderBy('c.fullname', 'asc')
+            ->get();
+
+        $loanIds = $loans->pluck('id')->toArray();
+
+        // Get payments on the selected date (or tied to target ref)
+        $payments = DB::table('clients_payments')
+            ->where(function ($q) use ($selectedDate, $targetRefNo) {
+                $q->whereDate('due_date', $selectedDate)
+                  ->orWhere('reference_number', $targetRefNo);
+            })
+            ->whereIn('client_loans_id', $loanIds)
+            ->get()
+            ->sortByDesc(function ($p) use ($targetRefNo) {
+                return $p->reference_number === $targetRefNo ? 1 : 0;
+            })
+            ->keyBy('client_loans_id');
+
+        $clients = $loans->map(function ($loan) use ($payments, $targetRefNo) {
+            $payment = $payments->get($loan->id);
+
+            $isAlreadyAdded = ($payment && $payment->reference_number === $targetRefNo);
+
+            $hasPayment = false;
+            $isNoPayment = false;
+            $paymentType = null;
+            $collectionAmount = 0.00;
+            $savingsAmount = 0.00;
+
+            if ($payment) {
+                $paymentType = $payment->type;
+                $collectionAmount = (float)($payment->collection ?? 0);
+                $savingsAmount = (float)($payment->savings_amount ?? 0);
+                $isNoPayment = ($payment->type === 'NO PAYMENT' || ($payment->collection == 0 && $payment->type !== null));
+                $hasPayment = ($collectionAmount > 0);
+            }
+
+            if ($isAlreadyAdded) {
+                $statusLabel = 'Added to Table';
+                $statusClass = 'badge-success';
+                if ($isNoPayment) {
+                    $statusLabel .= ' (NO PAYMENT)';
+                } elseif ($hasPayment) {
+                    $statusLabel .= ' (₱' . number_format($collectionAmount, 2) . ' ' . $paymentType . ')';
+                }
+            } elseif ($hasPayment) {
+                $statusLabel = '₱' . number_format($collectionAmount, 2) . ' (' . $paymentType . ')';
+                $statusClass = 'badge-success';
+            } elseif ($isNoPayment) {
+                $statusLabel = 'NO PAYMENT';
+                $statusClass = 'badge-danger';
+            } else {
+                $statusLabel = 'Pending / No Record';
+                $statusClass = 'badge-secondary';
+            }
+
+            return [
+                'client_id' => $loan->client_id,
+                'loan_id' => $loan->id,
+                'fullname' => $loan->fullname,
+                'daily' => (float)$loan->daily,
+                'balance' => (float)$loan->balance,
+                'is_already_added' => $isAlreadyAdded,
+                'has_payment' => $hasPayment,
+                'is_no_payment' => $isNoPayment,
+                'payment_type' => $paymentType,
+                'collection_amount' => $collectionAmount,
+                'savings_amount' => $savingsAmount,
+                'status_label' => $statusLabel,
+                'status_class' => $statusClass,
+                'payment_id' => $payment?->id,
+                'remarks' => $payment?->remarks ?? '',
+                'image' => !empty($payment?->image) ? asset($payment->image) : '',
+            ];
+        })->filter(function ($item) {
+            return ($item['balance'] > 0) || $item['has_payment'] || $item['is_no_payment'] || $item['is_already_added'];
+        })->values();
+
+        return response()->json([
+            'success' => true,
+            'clients' => $clients,
+            'total' => $clients->count(),
+            'sa_area_name' => $saArea->areas_name
+        ]);
+    }
+
+    /**
+     * Add specific client(s) from Special Area into the current collection sheet.
+     */
+    public function CollectorAddSpecificClient(Request $request)
+    {
+        $user = Session::get('user');
+        $collectorId = $user->id ?? 1;
+
+        $loanIds = (array)$request->input('loan_ids', []);
+        if (empty($loanIds) && $request->filled('loan_id')) {
+            $loanIds = [$request->input('loan_id')];
+        }
+
+        if (empty($loanIds)) {
+            if ($request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'No client selected.'], 422);
+            }
+            return redirect()->back()->with('error', 'No client selected.');
+        }
+
+        $targetRefNo = $request->input('reference_no');
+        $dueDate = $request->input('due_date');
+        $targetAreaId = $request->input('area_id');
+
+        $targetArea = DB::table('areas')->where('id', $targetAreaId)->first();
+        $targetAreaName = strtoupper(trim($targetArea?->areas_name ?? ''));
+
+        // Strict mapping check: FC1 = FC-SA1, FC2 = FC-SA2, FC3 = FC-SA3, FC4 = FC-SA4, FC7 = FC-SA7
+        $areaSaMap = [
+            'FC1' => 'FC-SA1',
+            'FC2' => 'FC-SA2',
+            'FC3' => 'FC-SA3',
+            'FC4' => 'FC-SA4',
+            'FC7' => 'FC-SA7',
+        ];
+
+        $allowedSaName = $areaSaMap[$targetAreaName] ?? null;
+        if (!$allowedSaName) {
+            $msg = "Area {$targetAreaName} does not have access to import from Special Area.";
+            if ($request->ajax()) {
+                return response()->json(['success' => false, 'message' => $msg], 403);
+            }
+            return redirect()->back()->with('error', $msg);
+        }
+
+        $allowedSaArea = DB::table('areas')->where('areas_name', $allowedSaName)->first();
+        $allowedSaAreaId = $allowedSaArea?->id;
+
+        $addedCount = 0;
+
+        DB::beginTransaction();
+        try {
+            foreach ($loanIds as $loanId) {
+                $loan = DB::table('clients_loans as cl')
+                    ->join('clients as c', 'cl.client_id', '=', 'c.id')
+                    ->where('cl.id', $loanId)
+                    ->select('cl.*', 'c.area_id as client_home_area')
+                    ->first();
+                if (!$loan) continue;
+
+                // Strict check: only allow loans belonging to the mapped SA area
+                if ($allowedSaAreaId && $loan->client_home_area != $allowedSaAreaId) {
+                    continue;
+                }
+
+                // Check if a payment already exists on this due_date for this loan
+                $existingPayment = DB::table('clients_payments')
+                    ->where('client_loans_id', $loanId)
+                    ->whereDate('due_date', $dueDate)
+                    ->first();
+
+                if ($existingPayment) {
+                    // Update reference_number and client_area to bring into current sheet
+                    DB::table('clients_payments')
+                        ->where('id', $existingPayment->id)
+                        ->update([
+                            'reference_number' => $targetRefNo,
+                            'client_area' => $targetAreaId,
+                            'updated_at' => now(),
+                        ]);
+                    $addedCount++;
+                } else {
+                    // Insert a placeholder payment record so client appears in the collection table
+                    DB::table('clients_payments')->insert([
+                        'reference_number' => $targetRefNo,
+                        'collected_by' => $collectorId,
+                        'due_date' => $dueDate,
+                        'client_id' => $loan->client_id,
+                        'client_loans_id' => $loan->id,
+                        'client_area' => $targetAreaId,
+                        'daily' => $loan->daily,
+                        'old_balance' => $loan->balance,
+                        'collection' => null,
+                        'savings_amount' => 0.00,
+                        'type' => null,
+                        'is_lapsed' => Carbon::parse($dueDate)->gt(Carbon::parse($loan->loan_to)) ? 1 : 0,
+                        'is_collected' => 0,
+                        'created_by' => $collectorId,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                    $addedCount++;
+                }
+            }
+
+            DB::commit();
+
+            $msg = "Successfully added {$addedCount} client(s) to collection sheet!";
+            if ($request->ajax()) {
+                return response()->json(['success' => true, 'message' => $msg]);
+            }
+            return redirect()->back()->with('success', $msg);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            if ($request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+            }
+            return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Remove an imported client from the current collection sheet.
+     */
+    public function CollectorRemoveSpecificClient(Request $request)
+    {
+        $loanId = $request->input('loan_id');
+        $paymentId = $request->input('payment_id');
+
+        $payment = null;
+        if ($paymentId) {
+            $payment = DB::table('clients_payments')->where('id', $paymentId)->first();
+        } elseif ($loanId && $request->filled('due_date')) {
+            $payment = DB::table('clients_payments')
+                ->where('client_loans_id', $loanId)
+                ->whereDate('due_date', $request->input('due_date'))
+                ->first();
+        }
+
+        if (!$payment) {
+            if ($request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Payment record not found.'], 404);
+            }
+            return redirect()->back()->with('error', 'Payment record not found.');
+        }
+
+        // Get the client's home area
+        $client = DB::table('clients')->where('id', $payment->client_id)->first();
+        $homeArea = DB::table('areas')->where('id', $client?->area_id)->first();
+
+        DB::beginTransaction();
+        try {
+            if (is_null($payment->collection) && is_null($payment->type)) {
+                // If it was just an empty placeholder row, delete it
+                DB::table('clients_payments')->where('id', $payment->id)->delete();
+            } else {
+                // If it had a payment from SA area, restore it back to the SA reference number
+                $dateCode = Carbon::parse($payment->due_date)->format('Y-m-d');
+                $saAreaName = $homeArea?->areas_name ?? 'SA';
+                $originalRefNo = $dateCode . '-' . strtoupper($saAreaName) . '-001';
+
+                DB::table('clients_payments')
+                    ->where('id', $payment->id)
+                    ->update([
+                        'reference_number' => $originalRefNo,
+                        'client_area' => $homeArea?->id ?? $payment->client_area,
+                        'updated_at' => now(),
+                    ]);
+            }
+
+            DB::commit();
+
+            $msg = 'Client removed from current collection sheet.';
+            if ($request->ajax()) {
+                return response()->json(['success' => true, 'message' => $msg]);
+            }
+            return redirect()->back()->with('success', $msg);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            if ($request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+            }
+            return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
+        }
     }
 }

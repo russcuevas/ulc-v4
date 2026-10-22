@@ -299,6 +299,82 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.06);
         }
 
+        /* Proof Viewer Floating Navigation Arrows */
+        .proof-nav-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 2px solid #ced4da;
+            color: #1e293b;
+            font-size: 19px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1065;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.22);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            outline: none;
+            user-select: none;
+        }
+
+        .proof-nav-prev {
+            left: -24px;
+        }
+
+        .proof-nav-next {
+            right: -24px;
+        }
+
+        .proof-nav-arrow:hover:not(:disabled) {
+            background: #0d6efd;
+            color: #ffffff;
+            border-color: #0d6efd;
+            transform: translateY(-50%) scale(1.12);
+            box-shadow: 0 8px 25px rgba(13, 110, 253, 0.45);
+        }
+
+        .proof-nav-arrow:active:not(:disabled) {
+            transform: translateY(-50%) scale(0.95);
+        }
+
+        .proof-nav-arrow:disabled {
+            opacity: 0.22;
+            cursor: not-allowed;
+            background: #e9ecef;
+            color: #adb5bd;
+            border-color: #dee2e6;
+            box-shadow: none;
+            pointer-events: none;
+        }
+
+        @media (max-width: 580px) {
+            .proof-nav-prev {
+                left: 10px;
+            }
+            .proof-nav-next {
+                right: 10px;
+            }
+            .proof-nav-arrow {
+                width: 42px;
+                height: 42px;
+                font-size: 16px;
+                background: rgba(255, 255, 255, 0.94);
+            }
+        }
+
+        .proof-main-image {
+            transition: opacity 0.15s ease-in-out;
+        }
+
+        .proof-main-image:hover {
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+        }
+
         @media print {
             body {
                 background-color: #fff !important;
@@ -582,6 +658,9 @@
             {{-- ========================================================= --}}
             {{-- DETAILED REPORT VIEW (With all client rows + footer total) --}}
             {{-- ========================================================= --}}
+            @php
+                $proofItems = [];
+            @endphp
             <table class="weekly-table">
                 <thead>
                     <tr>
@@ -610,6 +689,18 @@
                                         $hasRemarks = !empty($pDetail['remarks']);
                                         $imageSrc = $hasImage ? asset(ltrim($pDetail['image'], '/')) : '';
                                         $remarksText = $hasRemarks ? $pDetail['remarks'] : '';
+                                        $formattedDate = \Carbon\Carbon::parse($date)->format('F d, Y');
+                                        $currentProofIdx = null;
+                                        if ($hasImage) {
+                                            $currentProofIdx = count($proofItems);
+                                            $proofItems[] = [
+                                                'index' => $currentProofIdx,
+                                                'image' => $imageSrc,
+                                                'client' => $row->fullname,
+                                                'date' => $formattedDate,
+                                                'remarks' => $remarksText,
+                                            ];
+                                        }
                                     @endphp
                                     <td class="no-payment-cell">
                                         <div class="no-payment-content">
@@ -618,8 +709,8 @@
                                                     <img src="{{ $imageSrc }}" 
                                                          alt="Proof" 
                                                          class="no-payment-thumb"
-                                                         title="Click to view full image"
-                                                         onclick="viewReportProof('{{ $imageSrc }}', '{{ addslashes($row->fullname) }}', '{{ \Carbon\Carbon::parse($date)->format('F d, Y') }}', '{{ addslashes($remarksText) }}')"
+                                                         title="Click to view full image (Proof #{{ $currentProofIdx + 1 }})"
+                                                         onclick="openReportProofModal({{ $currentProofIdx }})"
                                                     >
                                                 </div>
                                             @else
@@ -658,17 +749,65 @@
         @endif
     </div>
 
-    <!-- View Proof Modal -->
+    <!-- View Proof Modal with Left & Right (< >) Navigation -->
     <div class="modal fade no-print" id="reportProofModal" tabindex="-1" aria-labelledby="reportProofModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered position-relative" style="max-width: 530px;">
+            
+            <!-- Left Floating Arrow Button (<) -->
+            <button type="button" 
+                    class="proof-nav-arrow proof-nav-prev" 
+                    id="modalProofFloatPrev" 
+                    onclick="navigateReportProof(-1)" 
+                    title="Previous Client Proof (Left Arrow key)">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+
+            <!-- Right Floating Arrow Button (>) -->
+            <button type="button" 
+                    class="proof-nav-arrow proof-nav-next" 
+                    id="modalProofFloatNext" 
+                    onclick="navigateReportProof(1)" 
+                    title="Next Client Proof (Right Arrow key)">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+
             <div class="modal-content shadow border-0">
-                <div class="modal-header bg-dark text-white py-2">
-                    <h6 class="modal-title fw-bold" id="reportProofModalLabel">
-                        <i class="fas fa-camera text-danger me-2"></i> No Payment Proof & Remarks
-                    </h6>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <div class="modal-header bg-dark text-white py-2 px-3 d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fas fa-camera text-danger me-1"></i>
+                        <h6 class="modal-title fw-bold mb-0" id="reportProofModalLabel">
+                            No Payment Proof & Remarks
+                        </h6>
+                        <span class="badge bg-danger rounded-pill px-2 py-1 ms-1" id="modalProofHeaderBadge" style="font-size: 11px;">
+                            Proof 1 of 1
+                        </span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="btn-group btn-group-sm me-1">
+                            <button type="button" class="btn btn-outline-light btn-sm py-0 px-2" id="headerProofPrevBtn" onclick="navigateReportProof(-1)" title="Previous (&larr;)">
+                                <i class="fas fa-chevron-left" style="font-size: 10px;"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-light btn-sm py-0 px-2" id="headerProofNextBtn" onclick="navigateReportProof(1)" title="Next (&rarr;)">
+                                <i class="fas fa-chevron-right" style="font-size: 10px;"></i>
+                            </button>
+                        </div>
+                        <button type="button" class="btn-close btn-close-white m-0" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
                 </div>
                 <div class="modal-body p-3">
+                    <!-- Client Selector / Jumper Dropdown -->
+                    <div class="mb-2" id="modalProofSelectWrapper" style="display: none;">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="small text-muted mb-0 fw-bold">
+                                <i class="fas fa-users text-primary me-1"></i> Jump to Client:
+                            </label>
+                            <span class="small text-muted" style="font-size: 11px;">(or use &larr; &rarr; keys)</span>
+                        </div>
+                        <select class="form-select form-select-sm fw-semibold" id="modalProofSelect" onchange="openReportProofModal(parseInt(this.value))">
+                        </select>
+                    </div>
+
+                    <!-- Client and Date Info Card -->
                     <div class="mb-3 p-2 bg-light rounded border">
                         <div class="d-flex justify-content-between align-items-center">
                             <span class="text-muted small">Client:</span>
@@ -682,13 +821,23 @@
 
                     <!-- Proof Image -->
                     <div class="mb-3 text-center">
-                        <label class="fw-bold small text-dark d-block text-start mb-1">
-                            <i class="fas fa-image text-danger me-1"></i> Uploaded Proof Image:
-                        </label>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="fw-bold small text-dark mb-0">
+                                <i class="fas fa-image text-danger me-1"></i> Uploaded Proof Image:
+                            </label>
+                            <small class="text-muted" style="font-size: 11px;">Click photo to zoom</small>
+                        </div>
                         <div class="bg-light p-2 rounded border">
-                            <img id="modalProofImg" src="" alt="Proof Image" class="img-fluid rounded" style="max-height: 380px; width: auto; object-fit: contain;">
+                            <img id="modalProofImg" 
+                                 src="" 
+                                 alt="Proof Image" 
+                                 class="img-fluid rounded proof-main-image" 
+                                 style="max-height: 380px; width: auto; object-fit: contain; cursor: zoom-in;"
+                                 onclick="window.open(this.src, '_blank')"
+                                 title="Click to view full image in new tab"
+                            >
                             <div class="mt-2">
-                                <a id="modalProofLink" href="#" target="_blank" class="btn btn-sm btn-outline-primary">
+                                <a id="modalProofLink" href="#" target="_blank" class="btn btn-sm btn-outline-primary px-3">
                                     <i class="fas fa-external-link-alt me-1"></i> View Full Image
                                 </a>
                             </div>
@@ -705,7 +854,18 @@
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer py-1 bg-light">
+                <div class="modal-footer py-2 bg-light d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-outline-primary btn-sm px-3 fw-bold shadow-sm" id="modalFooterPrevBtn" onclick="navigateReportProof(-1)">
+                            <i class="fas fa-chevron-left me-1"></i> Prev
+                        </button>
+                        <span class="badge bg-white text-dark border px-2 py-1 fw-bold" id="modalProofFooterCounter" style="font-size: 12px; min-width: 65px; text-align: center;">
+                            1 / 1
+                        </span>
+                        <button type="button" class="btn btn-outline-primary btn-sm px-3 fw-bold shadow-sm" id="modalFooterNextBtn" onclick="navigateReportProof(1)">
+                            Next <i class="fas fa-chevron-right ms-1"></i>
+                        </button>
+                    </div>
                     <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
@@ -714,25 +874,171 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        function viewReportProof(imgSrc, clientName, dateStr, remarks) {
-            document.getElementById('modalProofClient').textContent = clientName || '-';
-            document.getElementById('modalProofDate').textContent = dateStr || '-';
-            document.getElementById('modalProofImg').src = imgSrc;
-            document.getElementById('modalProofLink').href = imgSrc;
-            
-            var remEl = document.getElementById('modalProofRemarks');
-            if (remarks && remarks.trim() !== '') {
-                remEl.textContent = remarks;
-                remEl.className = 'text-dark';
-            } else {
-                remEl.textContent = 'No remarks provided';
-                remEl.className = 'text-muted fst-italic';
-            }
+        // Proofs collection populated directly from server data
+        window.weeklyReportProofs = @json($proofItems ?? []);
+        window.currentProofIndex = 0;
+
+        function openReportProofModal(index) {
+            var proofs = window.weeklyReportProofs || [];
+            if (!proofs.length) return;
+
+            if (index < 0) index = 0;
+            if (index >= proofs.length) index = proofs.length - 1;
+
+            window.currentProofIndex = index;
+            renderProofModalItem(window.currentProofIndex);
 
             var modalEl = document.getElementById('reportProofModal');
             var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
             modal.show();
         }
+
+        function navigateReportProof(step) {
+            var proofs = window.weeklyReportProofs || [];
+            if (proofs.length <= 1) return;
+
+            var newIndex = window.currentProofIndex + step;
+            if (newIndex >= 0 && newIndex < proofs.length) {
+                window.currentProofIndex = newIndex;
+                renderProofModalItem(window.currentProofIndex);
+            }
+        }
+
+        function renderProofModalItem(index) {
+            var proofs = window.weeklyReportProofs || [];
+            var total = proofs.length;
+            var item = proofs[index];
+            if (!item) return;
+
+            // Details
+            document.getElementById('modalProofClient').textContent = item.client || '-';
+            document.getElementById('modalProofDate').textContent = item.date || '-';
+
+            // Image
+            var imgEl = document.getElementById('modalProofImg');
+            var linkEl = document.getElementById('modalProofLink');
+            if (item.image) {
+                imgEl.style.opacity = '0.25';
+                setTimeout(function() {
+                    imgEl.src = item.image;
+                    imgEl.style.opacity = '1';
+                }, 60);
+                linkEl.href = item.image;
+                linkEl.style.display = 'inline-block';
+            } else {
+                imgEl.src = '';
+                linkEl.href = '#';
+                linkEl.style.display = 'none';
+            }
+
+            // Remarks
+            var remEl = document.getElementById('modalProofRemarks');
+            if (item.remarks && item.remarks.trim() !== '') {
+                remEl.textContent = item.remarks;
+                remEl.className = 'text-dark fw-semibold';
+            } else {
+                remEl.textContent = 'No remarks provided';
+                remEl.className = 'text-muted fst-italic';
+            }
+
+            // Counters
+            var counterText = (index + 1) + ' of ' + total;
+            var footerCounterText = (index + 1) + ' / ' + total;
+            document.getElementById('modalProofHeaderBadge').textContent = 'Proof ' + counterText;
+            document.getElementById('modalProofFooterCounter').textContent = footerCounterText;
+
+            // Button disabled states
+            var isFirst = (index <= 0);
+            var isLast = (index >= total - 1);
+
+            document.getElementById('modalProofFloatPrev').disabled = isFirst;
+            document.getElementById('modalProofFloatNext').disabled = isLast;
+            document.getElementById('modalFooterPrevBtn').disabled = isFirst;
+            document.getElementById('modalFooterNextBtn').disabled = isLast;
+            if (document.getElementById('headerProofPrevBtn')) {
+                document.getElementById('headerProofPrevBtn').disabled = isFirst;
+                document.getElementById('headerProofNextBtn').disabled = isLast;
+            }
+
+            // Sync dropdown if exists
+            var selectEl = document.getElementById('modalProofSelect');
+            if (selectEl && selectEl.value !== String(index)) {
+                selectEl.value = index;
+            }
+        }
+
+        // Backward compatibility
+        function viewReportProof(imgSrc, clientName, dateStr, remarks) {
+            var proofs = window.weeklyReportProofs || [];
+            var foundIndex = proofs.findIndex(function(p) {
+                return p.image === imgSrc;
+            });
+            if (foundIndex !== -1) {
+                openReportProofModal(foundIndex);
+            } else {
+                window.weeklyReportProofs = [{
+                    index: 0,
+                    image: imgSrc,
+                    client: clientName,
+                    date: dateStr,
+                    remarks: remarks
+                }];
+                openReportProofModal(0);
+            }
+        }
+
+        // Setup dropdown & keyboard & touch navigation
+        document.addEventListener('DOMContentLoaded', function() {
+            var proofs = window.weeklyReportProofs || [];
+            var selectWrapper = document.getElementById('modalProofSelectWrapper');
+            var selectEl = document.getElementById('modalProofSelect');
+
+            if (proofs.length > 1 && selectEl && selectWrapper) {
+                selectWrapper.style.display = 'block';
+                selectEl.innerHTML = '';
+                proofs.forEach(function(p, i) {
+                    var opt = document.createElement('option');
+                    opt.value = i;
+                    opt.textContent = (i + 1) + '. ' + p.client + ' — ' + p.date;
+                    selectEl.appendChild(opt);
+                });
+            }
+
+            // Keyboard navigation with Left & Right arrows
+            document.addEventListener('keydown', function(e) {
+                var modalEl = document.getElementById('reportProofModal');
+                if (!modalEl || !modalEl.classList.contains('show')) return;
+
+                if (e.key === 'ArrowLeft' || e.key === 'Left') {
+                    e.preventDefault();
+                    navigateReportProof(-1);
+                } else if (e.key === 'ArrowRight' || e.key === 'Right') {
+                    e.preventDefault();
+                    navigateReportProof(1);
+                }
+            });
+
+            // Mobile touch swipe
+            var modalBody = document.querySelector('#reportProofModal .modal-body');
+            if (modalBody) {
+                var touchStartX = 0;
+                var touchEndX = 0;
+                modalBody.addEventListener('touchstart', function(e) {
+                    touchStartX = e.changedTouches[0].screenX;
+                }, { passive: true });
+                modalBody.addEventListener('touchend', function(e) {
+                    touchEndX = e.changedTouches[0].screenX;
+                    var diff = touchEndX - touchStartX;
+                    if (Math.abs(diff) > 40) {
+                        if (diff > 0) {
+                            navigateReportProof(-1);
+                        } else {
+                            navigateReportProof(1);
+                        }
+                    }
+                }, { passive: true });
+            }
+        });
     </script>
 </body>
 

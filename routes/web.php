@@ -289,6 +289,12 @@ Route::middleware('role:collector')->prefix('collector')->name('collector.')->gr
         ->name('collections.store');
     Route::post('/collections/bulk-store', [CollectorCollectionController::class, 'CollectorBulkCollectPaymentRequest'])
         ->name('collections.bulk-store');
+    Route::get('/collections/get-sa-clients', [CollectorCollectionController::class, 'CollectorGetSaClients'])
+        ->name('collections.get-sa-clients');
+    Route::post('/collections/add-specific-client', [CollectorCollectionController::class, 'CollectorAddSpecificClient'])
+        ->name('collections.add-specific-client');
+    Route::post('/collections/remove-specific-client', [CollectorCollectionController::class, 'CollectorRemoveSpecificClient'])
+        ->name('collections.remove-specific-client');
 
     Route::get('/chat', [ChatController::class, 'StaffChatPage'])
         ->name('chat.page');
